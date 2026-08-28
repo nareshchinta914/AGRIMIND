@@ -1,0 +1,380 @@
+// ==============================================================================
+// AGRIMIND - PRODUCTION PRISMA POSTGRESQL SCHEMA
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------------------
+
+enum Role {
+  FARMER
+  CUSTOMER
+  MERCHANT
+  ADMIN
+}
+
+enum ActivityType {
+  SOWING
+  FERTILIZER
+  IRRIGATION
+  PESTICIDE
+  HARVEST
+  OTHER
+}
+
+enum ActivityStatus {
+  PENDING
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// ------------------------------------------------------------------------------
+// 1. CORE USER MODEL
+// ------------------------------------------------------------------------------
+
+model User {
+  id                Int       @id @default(autoincrement())
+  uuid              String    @unique @default(uuid())
+  fullName          String
+  mobileNumber      String    @unique
+  email             String?   @unique
+  passwordHash      String
+  role              Role      @default(FARMER)
+  preferredLanguage String    @default("en")
+  state             String
+  district          String
+  isVerified        Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  farmerProfile       FarmerProfile?
+  customerProfile     CustomerProfile?
+  merchantProfile     MerchantProfile?
+  farms               Farm[]
+  cropRecommendations CropRecommendation[]
+  waterRecommendations WaterRecommendation[]
+  farmCosts           FarmCost[]
+  farmActivities      FarmActivity[]
+  aiConversations     AIConversation[]
+  products            Product[]            @relation("SellerProducts")
+  customerOrders      Order[]              @relation("CustomerOrders")
+  sellerOrders        Order[]              @relation("SellerOrders")
+  wishlistItems       Wishlist[]
+  reports             Report[]
+
+  @@index([mobileNumber])
+  @@index([email])
+  @@index([role])
+}
+
+// ------------------------------------------------------------------------------
+// 2. ROLE PROFILES
+// ------------------------------------------------------------------------------
+
+model FarmerProfile {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  village      String?
+  farmSize     Float    @default(5.0)
+  farmSizeUnit String   @default("Acres")
+  soilType     String   @default("alluvial")
+  currentCrops String   @default("Paddy")
+  pmKisanId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model CustomerProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveryAddress String
+  city            String?
+  pincode         String?
+  preferences     String?  // JSON string of favorite produce
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MerchantProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName    String
+  businessType    String   @default("Wholesaler & Miller")
+  businessAddress String
+  gstNumber       String?
+  apmcLicense     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ------------------------------------------------------------------------------
+// 3. FARM & CROP MANAGEMENT
+// ------------------------------------------------------------------------------
+
+model Farm {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farmName    String
+  location    String
+  totalArea   Float
+  soilType    String
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Crop {
+  id               Int      @id @default(autoincrement())
+  name             String   @unique
+  scientificName   String?
+  category         String   @default("Cereals & Grains")
+  suitableSoil     String
+  waterRequirement String   @default("Moderate")
+  sowingSeason     String
+  durationDays     Int      @default(120)
+  expectedYield    String
+  fertilizerRecipe String?
+  description      String?
+  createdAt        DateTime @default(now())
+}
+
+model CropRecommendation {
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  soilType           String
+  location           String
+  recommendedCrop    String
+  confidenceScore    Float    @default(0.95)
+  npkRecommendation  String?
+  yieldForecast      String?
+  profitForecast     String?
+  imageUrl           String?
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------------------
+// 4. WEATHER & WATER ADVISORY
+// ------------------------------------------------------------------------------
+
+model WeatherRecord {
+  id                  Int      @id @default(autoincrement())
+  location            String
+  temperature         Float
+  humidity            Float
+  rainfallProbability Float    @default(0.0)
+  windSpeed           Float    @default(10.0)
+  condition           String   @default("Clear")
+  sprayAdvisory       String?
+  recordedAt          DateTime @default(now())
+
+  @@index([location])
+}
+
+model WaterRecommendation {
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cropName           String
+  farmSize           Float
+  soilType           String
+  nextIrrigationTime DateTime
+  durationMinutes    Int      @default(120)
+  soilMoisture       String   @default("34% Adequate")
+  waterSavingTip     String?
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------------------
+// 5. FARM FINANCIALS & ACTIVITIES
+// ------------------------------------------------------------------------------
+
+model FarmCost {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cropName        String
+  totalCost       Float
+  costPerAcre     Float
+  expectedRevenue Float
+  estimatedProfit Float
+  breakEvenYield  String?
+  breakdownJson   String   // JSON formatted breakdown of expenses
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model FarmActivity {
+  id            Int            @id @default(autoincrement())
+  userId        Int
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  activityType  ActivityType   @default(IRRIGATION)
+  plotName      String
+  scheduledDate String
+  scheduledTime String
+  status        ActivityStatus @default(PENDING)
+  details       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------------------
+// 6. AI CONVERSATIONS
+// ------------------------------------------------------------------------------
+
+model AIConversation {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  language   String   @default("en")
+  message    String
+  aiResponse String
+  audioUrl   String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------------------
+// 7. MARKETPLACE & PRODUCTS
+// ------------------------------------------------------------------------------
+
+model Product {
+  id           Int         @id @default(autoincrement())
+  uuid         String      @unique @default(uuid())
+  sellerId     Int
+  seller       User        @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
+  sellerRole   Role        @default(FARMER)
+  name         String
+  category     String      @default("Cereals & Grains")
+  quantity     Float
+  unit         String      @default("Quintals")
+  price        Float
+  location     String
+  description  String?
+  imageUrl     String?
+  available    Boolean     @default(true)
+  rating       Float       @default(4.9)
+  reviewsCount Int         @default(1)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  orderItems   OrderItem[]
+  wishlists    Wishlist[]
+
+  @@index([sellerId])
+  @@index([category])
+  @@index([available])
+}
+
+// ------------------------------------------------------------------------------
+// 8. ORDERS & FULFILLMENT
+// ------------------------------------------------------------------------------
+
+model Order {
+  id              Int           @id @default(autoincrement())
+  orderNumber     String        @unique @default(cuid())
+  customerId      Int
+  customer        User          @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Cascade)
+  sellerId        Int
+  seller          User          @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
+  totalPrice      Float
+  status          OrderStatus   @default(PENDING)
+  paymentMethod   String        @default("UPI / Cash on Delivery")
+  paymentStatus   PaymentStatus @default(PENDING)
+  deliveryAddress String
+  timelineJson    String?       // JSON list of delivery milestone events
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  orderItems      OrderItem[]
+
+  @@index([customerId])
+  @@index([sellerId])
+  @@index([status])
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productName String
+  quantity    Float
+  unit        String
+  unitPrice   Float
+  totalPrice  Float
+
+  @@index([orderId])
+}
+
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+// ------------------------------------------------------------------------------
+// 9. REPORTS
+// ------------------------------------------------------------------------------
+
+model Report {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  reportType     String   @default("HARVEST_SUMMARY")
+  metricDataJson String   // JSON metric payload
+  generatedAt    DateTime @default(now())
+
+  @@index([userId])
+}

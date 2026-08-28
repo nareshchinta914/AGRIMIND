@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # 1. AI Machine Learning Service (FastAPI)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: agrimind-ai-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - agrimind-network
+
+  # 2. Production Express Backend (Node.js + Prisma)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agrimind-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - AI_SERVICE_URL=http://ai-service:8000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/agrimind?schema=public}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-agrimind_production_jwt_access_key_2026}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-agrimind_production_jwt_refresh_key_2026}
+    depends_on:
+      - ai-service
+    networks:
+      - agrimind-network
+
+  # 3. Frontend Web Application (React + Vite + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: agrimind-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - agrimind-network
+
+networks:
+  agrimind-network:
+    driver: bridge

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ade80" />
+      <stop offset="100%" stop-color="#15803d" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#166534" />
+      <stop offset="100%" stop-color="#052e16" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="28" fill="url(#bgGrad)" />
+  <circle cx="50" cy="50" r="38" stroke="#22c55e" stroke-width="2" stroke-dasharray="4 3" opacity="0.4" />
+  <!-- Sprout / Leaf -->
+  <path d="M50 78 C50 54 50 42 50 30" stroke="#4ade80" stroke-width="5" stroke-linecap="round" />
+  <path d="M50 48 C36 44 26 30 32 20 C42 16 50 28 50 48 Z" fill="url(#leafGrad)" />
+  <path d="M50 40 C64 36 74 22 68 12 C58 8 50 20 50 40 Z" fill="#22c55e" opacity="0.9" />
+  <!-- Small AI Node Dots -->
+  <circle cx="32" cy="20" r="3" fill="#fde68a" />
+  <circle cx="68" cy="12" r="3" fill="#fde68a" />
+  <circle cx="50" cy="30" r="3" fill="#ffffff" />
+</svg>
