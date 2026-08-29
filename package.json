@@ -2,12 +2,7 @@
   "name": "agrimind-workspace",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "scripts": {
-    "build": "npm run build --workspace=agrimind-frontend",
-    "start": "npm run start --workspace=agrimind-backend"
+    "build": "cd frontend && npm install && npm run build"
   }
 }
