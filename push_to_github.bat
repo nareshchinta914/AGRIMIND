@@ -16,7 +16,7 @@ echo.
 echo =======================================================================
 set /p TOKEN="Enter GitHub Token (or press ENTER for direct push): "
 
-if "%TOKEN%"=="" (
+if "%TOKEN%"=="" (                                                                                                                                                                                                 
     echo.
     echo Pushing directly to https://github.com/nareshchinta914/AGRIMIND.git ...
     E:\Tools\MinGit\cmd\git.exe push -u origin main
