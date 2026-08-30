@@ -40,7 +40,8 @@ Thumbs.db
 *.swo
 
 # Large video scratch files
-*.mp4
+give_me_better*.mp4
+!frontend/public/*.mp4
 
 # Logs
 *.log

@@ -306,7 +306,7 @@ const LandingPage = () => {
       {/* ========================================================================= */}
       {/* 1. TOP HERO ANIMATION SCREEN (Mobile-Optimized Responsive Layout)           */}
       {/* ========================================================================= */}
-      <section className="w-full h-[75vh] sm:h-screen min-h-[480px] relative bg-black overflow-hidden select-none">
+      <section className="w-full h-[75vh] sm:h-screen min-h-[480px] relative bg-gradient-to-b from-slate-950 via-[#072c1a] to-slate-900 overflow-hidden select-none">
         {/* Top Floating Responsive Header (Brand + Language + Auth) */}
         <div className="absolute top-3 left-3 right-3 sm:top-6 sm:left-8 sm:right-8 z-30 flex items-center justify-between gap-2 pointer-events-auto">
           {/* Brand Logo Pill */}
@@ -388,6 +388,7 @@ const LandingPage = () => {
           loop
           muted
           playsInline
+          preload="auto"
           className="w-full h-full object-cover opacity-100"
         >
           <source src="/agrimind-hero-animation.mp4" type="video/mp4" />
