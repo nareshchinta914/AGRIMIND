@@ -401,56 +401,11 @@ const LandingPage = () => {
           defaultMuted
           playsInline
           preload="auto"
-          className="w-full h-full object-cover opacity-90 absolute inset-0 z-0"
+          className="w-full h-full object-cover opacity-100"
         >
           <source src="/agrimind-hero-animation.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
-
-        {/* Ambient Dark Overlay & Glow */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-slate-950/60 z-10 pointer-events-none" />
-
-        {/* Center Hero Content (Always visible & animated) */}
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center px-4 pointer-events-none">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="max-w-3xl pointer-events-auto"
-          >
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/40 text-emerald-300 font-bold text-xs sm:text-sm mb-2 sm:mb-3 shadow-lg">
-              <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: '6s' }} />
-              <span>🌾 SMART AGRI-TECH ECOSYSTEM</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg leading-tight font-display mb-2 sm:mb-3">
-              Empowering Farmers with <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-amber-300 to-yellow-400">AI Precision</span> & Live Markets
-            </h1>
-
-            <p className="text-xs sm:text-base text-emerald-100/90 font-medium max-w-xl mx-auto drop-shadow mb-4 hidden sm:block">
-              Real-time Mandi Rates • AI Crop Diagnosis • Soil Recommendation • Multilingual Voice Guidance
-            </p>
-
-            <div className="flex items-center justify-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => requireAuth(() => openAssistant())}
-                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl flex items-center gap-2 transition-transform active:scale-95 cursor-pointer"
-              >
-                <Bot className="w-4 h-4" />
-                <span>Ask AI Kisan</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => requireAuth(() => navigate('/features?tab=mandi'))}
-                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm border border-emerald-400/40 backdrop-blur-md shadow-xl flex items-center gap-2 transition-transform active:scale-95 cursor-pointer"
-              >
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-                <span>Live Mandi Prices</span>
-              </button>
-            </div>
-          </motion.div>
-        </div>
 
         {/* Floating Voice Guidance Widget */}
         <div className="absolute bottom-4 left-3 right-3 sm:left-auto sm:right-8 sm:bottom-8 z-20 pointer-events-auto">
