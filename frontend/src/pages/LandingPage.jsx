@@ -64,67 +64,67 @@ const LandingPage = () => {
     actionCallback();
   };
 
-  // 6 Colored Pastel Feature Cards (Instant interactive tool access)
+  // 6 Colored Pastel Feature Cards (Dynamic multilingual titles & descriptions)
   const quickToolCards = [
     {
       id: 'crop_rec',
-      title: 'Crop Recommendation',
+      title: t('cropAdvice') || 'Crop Recommendation',
       icon: '🌽',
       bgColor: 'bg-[#e7f7ef]',
       borderColor: 'border-[#b2ebd0]',
       textColor: 'text-emerald-950',
       action: () => requireAuth(() => setIsSoilModalOpen(true)),
-      audio: 'Scan and test farm soil to get recommended crops'
+      audio: t('cropAdviceDesc') || 'Scan and test farm soil to get recommended crops'
     },
     {
       id: 'fertilizer',
-      title: 'Fertilizer & Disease',
+      title: t('showCrop') || 'Fertilizer & Disease',
       icon: '🧪',
       bgColor: 'bg-[#fef9e7]',
       borderColor: 'border-[#fde8a1]',
       textColor: 'text-amber-950',
       action: () => requireAuth(() => openCamera()),
-      audio: 'Scan crop disease and calculate fertilizer dosage'
+      audio: t('showCropDesc') || 'Scan crop disease and calculate fertilizer dosage'
     },
     {
       id: 'weather',
-      title: 'Rain Weather',
+      title: t('weather') || 'Rain Weather',
       icon: '☀️',
       bgColor: 'bg-[#fefbe8]',
       borderColor: 'border-[#fef08a]',
       textColor: 'text-yellow-950',
       action: () => requireAuth(() => navigate('/features?tab=weather')),
-      audio: 'Today rain and weather forecast'
+      audio: t('weatherDesc') || 'Today rain and weather forecast'
     },
     {
       id: 'water',
-      title: 'Smart Water Time',
+      title: t('waterAdvice') || 'Smart Water Time',
       icon: '💧',
       bgColor: 'bg-[#eef8fe]',
       borderColor: 'border-[#bae6fd]',
       textColor: 'text-sky-950',
       action: () => requireAuth(() => navigate('/features?tab=water')),
-      audio: 'Smart irrigation and water scheduling'
+      audio: t('waterAdviceDesc') || 'Smart irrigation and water scheduling'
     },
     {
       id: 'profit',
-      title: 'Farm Profit & ROI',
+      title: t('farmCost') || 'Farm Profit & ROI',
       icon: '💰',
       bgColor: 'bg-[#f5f0fb]',
       borderColor: 'border-[#e9d5ff]',
       textColor: 'text-purple-950',
       action: () => requireAuth(() => navigate('/features?tab=cost')),
-      audio: 'Farm expense calculation and profit margins'
+      audio: t('farmCostDesc') || 'Farm expense calculation and profit margins'
     },
     {
       id: 'voice',
-      title: 'Voice Assistant',
+      title: t('aiAssistant') || 'Voice Assistant',
       icon: '🎙️',
       bgColor: 'bg-[#fef3c7]',
       borderColor: 'border-[#f59e0b] ring-2 ring-amber-400/40',
       textColor: 'text-amber-950',
       action: () => requireAuth(() => openAssistant()),
-      audio: 'Ask Kisan AI by speaking in your regional language'
+      audio: t('askAgrimind') || 'Ask Kisan AI by speaking in your regional language'
     }
   ];
 
@@ -422,10 +422,10 @@ const LandingPage = () => {
 
             <div className="text-left flex-1 min-w-0">
               <span className="text-xs font-black text-white group-hover:text-emerald-300 transition-colors block">
-                🎙️ Kisan Voice Guidance
+                🎙️ {t('askAgrimind') || 'Kisan Voice Guidance'}
               </span>
               <span className="text-[10px] text-emerald-200 block font-semibold truncate">
-                Tap to Speak in Regional Languages
+                {currentLangObj.speakPrompt || t('speakNow') || 'Tap to Speak in Regional Languages'}
               </span>
             </div>
 
@@ -474,7 +474,7 @@ const LandingPage = () => {
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="text-xl sm:text-2xl">📈</span>
               <h2 className="text-lg sm:text-2xl font-black text-slate-900 font-display">
-                Live Crop Market Prices & Mandi Rates
+                {t('sellCropDesc') || t('tagMarket') || 'Live Crop Market Prices & Mandi Rates'}
               </h2>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 text-[10px] sm:text-xs font-black uppercase tracking-wider animate-pulse">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
@@ -483,7 +483,7 @@ const LandingPage = () => {
             </div>
 
             <p className="text-[11px] sm:text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 w-fit">
-              Updated Live from Agmarknet Mandis
+              {t('tagMarket') || 'Mandi Market'} • Agmarknet
             </p>
           </div>
 
@@ -492,7 +492,7 @@ const LandingPage = () => {
             <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 absolute left-3.5 top-3 sm:top-3.5" />
             <input
               type="text"
-              placeholder="Search crops or mandi (e.g. Rice, Coimbatore)..."
+              placeholder={language === 'ta' ? 'பயிர் அல்லது மண்டியை தேடுங்கள் (எ.கா. நெல், கோயம்புத்தூர்)...' : language === 'te' ? 'పంట లేదా మండిని శోధించండి...' : language === 'hi' ? 'फसल या मंडी खोजें (उदा. गेहूं, इंदौर)...' : 'Search crops or mandi (e.g. Rice, Coimbatore)...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 rounded-xl sm:rounded-full bg-[#f8faf8] border-2 border-slate-200 text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner"
@@ -581,7 +581,9 @@ const LandingPage = () => {
                     title="Listen Price Aloud"
                   >
                     <Volume2 className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
-                    <span className="truncate">Listen</span>
+                    <span className="truncate">
+                      {language === 'ta' ? 'கேளுங்கள்' : language === 'te' ? 'వినండి' : language === 'hi' ? 'सुनें' : language === 'kn' ? 'ಕೇಳಿ' : language === 'ml' ? 'കേൾക്കൂ' : language === 'mr' ? 'ऐका' : language === 'bn' ? 'শুনুন' : 'Listen'}
+                    </span>
                   </button>
 
                   <button
@@ -590,7 +592,9 @@ const LandingPage = () => {
                     className="py-2 px-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black flex items-center justify-center gap-1 shadow-sm transition-transform active:scale-95 cursor-pointer"
                   >
                     <ShoppingCart className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>Buy</span>
+                    <span>
+                      {language === 'ta' ? 'வாங்கு' : language === 'te' ? 'కొనుగోలు' : language === 'hi' ? 'खरीदें' : language === 'kn' ? 'ಖರೀದಿಸಿ' : language === 'ml' ? 'വാങ്ങുക' : language === 'mr' ? 'खरेदी करा' : language === 'bn' ? 'কিনুন' : 'Buy'}
+                    </span>
                   </button>
                 </div>
               </motion.div>

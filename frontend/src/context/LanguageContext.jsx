@@ -24,11 +24,17 @@ export const LanguageProvider = ({ children }) => {
 
   const changeLanguage = (langCode, previewAudio = false) => {
     setLanguage(langCode);
-    if (previewAudio) {
-      const selected = LANGUAGES.find((l) => l.code === langCode);
-      if (selected?.greeting) {
-        speakText(selected.greeting, langCode);
+    try {
+      localStorage.setItem('agrimind_lang', langCode);
+      document.documentElement.lang = langCode;
+      if (previewAudio) {
+        const selected = LANGUAGES.find((l) => l.code === langCode);
+        if (selected?.greeting) {
+          speakText(selected.greeting, langCode);
+        }
       }
+    } catch (err) {
+      console.warn('Language change notification:', err);
     }
   };
 
