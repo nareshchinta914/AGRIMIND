@@ -4,5 +4,6 @@ const recommendationController = require('../controllers/recommendationControlle
 
 router.post('/crop', recommendationController.recommendCrop);
 router.post('/analyze-soil-image', recommendationController.analyzeSoilImage);
+router.post('/analyze-plant-disease', recommendationController.analyzePlantDisease);
 
 module.exports = router;

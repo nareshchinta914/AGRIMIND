@@ -206,6 +206,134 @@ Output JSON only in this exact format:
       next(err);
     }
   }
+
+  /**
+   * POST /api/recommendations/analyze-plant-disease
+   * Validates whether an image contains a clear plant leaf before diagnosing disease and recommending fertilizer
+   */
+  async analyzePlantDisease(req, res, next) {
+    try {
+      const { image, language = 'en' } = req.body;
+
+      if (!image) {
+        return successResponse(res, {
+          isValid: false,
+          isPlant: false,
+          status: 'POOR_QUALITY',
+          message: 'Plant image is not clear enough. Please capture a clear close-up photo of the plant or affected leaf.'
+        });
+      }
+
+      if (env.GEMINI_API_KEY) {
+        try {
+          const geminiPrompt = `
+You are an expert Plant Pathologist & Agronomist.
+Analyze this photo strictly for Plant Health, Disease Detection, and Fertilizer Recommendation.
+
+STEP 1: Validate image clarity, lighting, and focus.
+STEP 2: Verify whether the photo actually contains a real plant or crop leaf.
+REJECT if it contains:
+- Humans or faces
+- Animals
+- Soil only (without foliage/leaves)
+- Roads, buildings, concrete, tiles
+- Vehicles, sky, water, food
+- Screenshots, electronics, random objects
+
+STEP 3: If valid plant, identify disease/condition and fertilizer prescription.
+If uncertain, mark diagnosisType as "POSSIBLE" or status as "UNCERTAIN_DIAGNOSIS".
+
+Output JSON only in this exact format:
+{
+  "isValid": true | false,
+  "isPlant": true | false,
+  "status": "SUCCESS" | "NOT_PLANT" | "POOR_QUALITY" | "UNCERTAIN_DIAGNOSIS",
+  "diagnosisType": "CONFIRMED" | "POSSIBLE",
+  "confidence": 92,
+  "crop": "Paddy / Rice",
+  "problem": "Nutrient Deficiency (Nitrogen & Zinc Chlorosis)",
+  "symptoms": "Pale yellowing leaves starting from tips",
+  "fertilizer": {
+    "name": "Urea + Zinc Sulfate",
+    "whyRecommended": "Restores chlorophyll synthesis",
+    "dosage": "25kg/acre Urea + 5g/L Zinc Sulfate spray",
+    "precautions": "Ensure soil moisture before application"
+  }
+}
+`.trim();
+
+          const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+
+          const visionRes = await axios.post(
+            geminiUrl,
+            {
+              contents: [
+                {
+                  parts: [
+                    { text: geminiPrompt },
+                    {
+                      inlineData: {
+                        mimeType: 'image/jpeg',
+                        data: base64Data
+                      }
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.2,
+                responseMimeType: 'application/json'
+              }
+            },
+            { timeout: 6000 }
+          );
+
+          const resultJson = JSON.parse(visionRes.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+          if (resultJson && resultJson.status) {
+            if (!resultJson.isPlant || resultJson.status === 'NOT_PLANT') {
+              return successResponse(res, {
+                isValid: false,
+                isPlant: false,
+                status: 'NOT_PLANT',
+                message: 'This image does not appear to contain a plant. Please capture a clear photo of the affected plant or leaf.'
+              });
+            }
+
+            if (resultJson.status === 'POOR_QUALITY' || !resultJson.isValid) {
+              return successResponse(res, {
+                isValid: false,
+                isPlant: false,
+                status: 'POOR_QUALITY',
+                message: 'Plant image is not clear enough. Please capture a clear close-up photo of the plant or affected leaf.'
+              });
+            }
+
+            if (resultJson.status === 'UNCERTAIN_DIAGNOSIS') {
+              return successResponse(res, {
+                isValid: true,
+                isPlant: true,
+                status: 'UNCERTAIN_DIAGNOSIS',
+                confidence: resultJson.confidence || 60,
+                message: 'Unable to identify the plant condition confidently from this image. Please capture a clear close-up image of the affected leaf/plant.'
+              });
+            }
+
+            return successResponse(res, resultJson);
+          }
+        } catch (geminiErr) {
+          console.warn('[Backend] Vision AI fallback for plant disease:', geminiErr.message);
+        }
+      }
+
+      return successResponse(res, {
+        status: 'READY_FOR_CLIENT_PIXEL_EVALUATION',
+        message: 'Proceed with client-side pixel evaluation'
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new RecommendationController();
