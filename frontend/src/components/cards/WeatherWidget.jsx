@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CloudRain, Sun, CloudSun, Wind, Droplets, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { CloudRain, Sun, CloudSun, Wind, Droplets, ShieldAlert, CheckCircle2, RefreshCw, Sunrise, Sunset } from 'lucide-react';
 import { weatherService } from '../../services/weatherService';
 import { useLocation } from '../../hooks/useLocation';
 
@@ -7,22 +7,26 @@ const WeatherWidget = () => {
   const { selectedState, selectedDistrict } = useLocation();
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchWeather = async (isManual = false) => {
+    if (isManual) setIsRefreshing(true);
+    else setLoading(true);
+    try {
+      const data = await weatherService.getCurrentWeather({
+        state: selectedState,
+        district: selectedDistrict,
+      });
+      setWeather(data);
+    } catch (err) {
+      console.error('Failed to fetch weather:', err);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchWeather = async () => {
-      setLoading(true);
-      try {
-        const data = await weatherService.getCurrentWeather({
-          state: selectedState,
-          district: selectedDistrict,
-        });
-        setWeather(data);
-      } catch (err) {
-        console.error('Failed to fetch weather:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchWeather();
   }, [selectedState, selectedDistrict]);
 
@@ -44,13 +48,29 @@ const WeatherWidget = () => {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
-          <span className="text-[11px] font-extrabold uppercase tracking-widest text-skyAgri-300">
-            Agri-Weather & Forecast
-          </span>
-          <h4 className="text-xl font-bold font-display text-white">{weather.location}</h4>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-widest text-skyAgri-300">
+              Live Agri-Weather
+            </span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            {weather.lastUpdatedFormatted && (
+              <span className="text-[10px] text-slate-400">• {weather.lastUpdatedFormatted}</span>
+            )}
+          </div>
+          <h4 className="text-xl font-bold font-display text-white mt-0.5">{weather.location}</h4>
         </div>
-        <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-sunAmber-400">
-          <CloudSun className="w-8 h-8" />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fetchWeather(true)}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            title="Refresh Weather"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+          <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-sunAmber-400 text-2xl">
+            {weather.icon || <CloudSun className="w-8 h-8" />}
+          </div>
         </div>
       </div>
 
@@ -59,8 +79,8 @@ const WeatherWidget = () => {
         <span className="text-4xl sm:text-5xl font-black font-display text-white">
           {weather.temperature}°C
         </span>
-        <span className="text-sm font-semibold text-slate-300">
-          {weather.condition}
+        <span className="text-xs sm:text-sm font-semibold text-slate-300">
+          Feels like {weather.feelsLike ?? weather.temperature}°C • {weather.condition}
         </span>
       </div>
 
@@ -87,15 +107,15 @@ const WeatherWidget = () => {
             <CloudRain className="w-3.5 h-3.5 text-skyAgri-300" />
             <span>Rain Risk</span>
           </div>
-          <p className="text-sm font-bold text-white">{weather.rainfallChance}%</p>
+          <p className="text-sm font-bold text-white">{weather.rainProbability ?? 10}%</p>
         </div>
 
         <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
           <div className="flex items-center gap-1.5 text-slate-400 text-xs mb-1">
             <Sun className="w-3.5 h-3.5 text-sunAmber-400" />
-            <span>Soil Moisture</span>
+            <span>Sunrise / Set</span>
           </div>
-          <p className="text-sm font-bold text-white">{weather.soilMoisture?.split(' ')[0] || '71%'}</p>
+          <p className="text-xs font-bold text-white">{weather.sunrise || '06:05 AM'} / {weather.sunset || '06:45 PM'}</p>
         </div>
       </div>
 
@@ -107,7 +127,7 @@ const WeatherWidget = () => {
             Field Spraying Advisory
           </p>
           <p className="text-xs text-slate-200 mt-0.5 leading-relaxed">
-            {weather.sprayingAdvisory}
+            {weather.sprayAdvisory}
           </p>
         </div>
       </div>

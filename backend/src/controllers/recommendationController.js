@@ -79,6 +79,133 @@ class RecommendationController {
       next(error);
     }
   }
+
+  /**
+   * POST /api/recommendations/analyze-soil-image
+   * Validates whether an image contains clear agricultural soil before generating crop advice
+   */
+  async analyzeSoilImage(req, res, next) {
+    try {
+      const { image, location = 'Thanjavur, Tamil Nadu', language = 'en' } = req.body;
+
+      if (!image) {
+        return errorResponse(res, 'Image is not clear enough. Please capture a clear photo of the soil and try again.', 'POOR_QUALITY', 400);
+      }
+
+      // If Vision AI is configured, validate with AI Vision prompt
+      if (env.GEMINI_API_KEY) {
+        try {
+          const geminiPrompt = `
+You are an expert Agricultural Soil Scientist and Computer Vision classifier.
+Analyze this photo strictly for Agricultural Soil and Crop Recommendation.
+
+STRICT INSTRUCTIONS:
+Step 1: Check if the image is clear and unobstructed.
+Step 2: Check if the image contains clearly visible agricultural soil.
+REJECT if the image contains:
+- Humans, faces, hands
+- Leaves, grass, trees, flowers, plants (without clear bare soil)
+- Animals or pets
+- Buildings, walls, floors, tiles, concrete, roads
+- Vehicles or machinery
+- Sky, clouds, water
+- Food, fruits, vegetables
+- Electronics, screens, screenshots, random objects
+
+Output JSON only in this exact format:
+{
+  "isValid": true | false,
+  "isSoil": true | false,
+  "status": "SUCCESS" | "NOT_SOIL" | "POOR_QUALITY" | "INSUFFICIENT_SOIL",
+  "soilType": "alluvial" | "black" | "red" | "laterite",
+  "confidence": 95,
+  "rejectionReason": "..." (only if rejected)
+}
+`.trim();
+
+          const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+
+          const visionRes = await axios.post(
+            geminiUrl,
+            {
+              contents: [
+                {
+                  parts: [
+                    { text: geminiPrompt },
+                    {
+                      inlineData: {
+                        mimeType: 'image/jpeg',
+                        data: base64Data
+                      }
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.2,
+                responseMimeType: 'application/json'
+              }
+            },
+            { timeout: 6000 }
+          );
+
+          const resultJson = JSON.parse(visionRes.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+          if (resultJson && resultJson.status) {
+            if (!resultJson.isSoil || resultJson.status === 'NOT_SOIL') {
+              return successResponse(res, {
+                isValid: false,
+                isSoil: false,
+                status: 'NOT_SOIL',
+                message: 'This image does not appear to contain soil. Please capture a clear photo of the soil.'
+              });
+            }
+
+            if (resultJson.status === 'INSUFFICIENT_SOIL') {
+              return successResponse(res, {
+                isValid: false,
+                isSoil: false,
+                status: 'INSUFFICIENT_SOIL',
+                message: 'Insufficient soil information. Please capture a closer and clearer photo of the soil.'
+              });
+            }
+
+            if (resultJson.status === 'POOR_QUALITY' || !resultJson.isValid) {
+              return successResponse(res, {
+                isValid: false,
+                isSoil: false,
+                status: 'POOR_QUALITY',
+                message: 'Image is not clear enough. Please capture a clear photo of the soil and try again.'
+              });
+            }
+
+            // Valid Soil: Generate recommendations
+            const soilKey = resultJson.soilType || 'alluvial';
+            const recommendations = cropEngine.recommendCrops({ soilType: soilKey, location });
+
+            return successResponse(res, {
+              isValid: true,
+              isSoil: true,
+              status: 'SUCCESS',
+              confidence: resultJson.confidence || 95,
+              soilType: soilKey,
+              recommendations
+            });
+          }
+        } catch (visionErr) {
+          console.warn('[Backend] Vision AI fallback:', visionErr.message);
+        }
+      }
+
+      // Default client-side verified response
+      return successResponse(res, {
+        status: 'READY_FOR_CLIENT_PIXEL_EVALUATION',
+        message: 'Proceed with client-side pixel evaluation'
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new RecommendationController();

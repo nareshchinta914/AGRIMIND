@@ -635,51 +635,42 @@ const BUYING_MERCHANTS_DATA = [
   }
 ];
 
+const marketPriceService = require('../services/marketPriceService');
+
 class MarketController {
   /**
    * GET /api/market/mandi-prices
-   * Query params: category, state, search
+   * Query params: crop, commodity, state, district, market, category, search
    */
   async getMandiPrices(req, res, next) {
     try {
-      const { category, state, search } = req.query;
-      let prices = [...MANDI_PRICES_DATA];
+      const result = await marketPriceService.getMandiPrices(req.query);
+      return successResponse(res, result, 'Live APMC Mandi prices retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 
-      if (category && category !== 'All') {
-        prices = prices.filter(
-          (p) => p.category.toLowerCase() === category.toLowerCase()
-        );
-      }
+  /**
+   * GET /api/market/filter-options
+   */
+  async getFilterOptions(req, res, next) {
+    try {
+      const options = await marketPriceService.getFilterOptions();
+      return successResponse(res, options, 'Mandi filter options retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
 
-      if (state && state !== 'All') {
-        prices = prices.filter(
-          (p) => p.state.toLowerCase() === state.toLowerCase()
-        );
-      }
-
-      if (search) {
-        const q = search.toLowerCase();
-        prices = prices.filter(
-          (p) =>
-            p.commodity.toLowerCase().includes(q) ||
-            p.variety.toLowerCase().includes(q) ||
-            p.market.toLowerCase().includes(q) ||
-            p.state.toLowerCase().includes(q)
-        );
-      }
-
-      const vegetableCount = MANDI_PRICES_DATA.filter((p) => p.category === 'Vegetables').length;
-
-      return successResponse(
-        res,
-        {
-          total: prices.length,
-          vegetablesCount: vegetableCount,
-          lastUpdated: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-          prices
-        },
-        'Live APMC Mandi prices retrieved successfully'
-      );
+  /**
+   * GET /api/market/crop-price
+   */
+  async getCropPrice(req, res, next) {
+    try {
+      const { crop, location } = req.query;
+      const priceData = await marketPriceService.getLatestPriceForCrop(crop, location);
+      return successResponse(res, { priceData }, 'Crop market price retrieved');
     } catch (error) {
       next(error);
     }

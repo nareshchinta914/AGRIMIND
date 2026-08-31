@@ -6,6 +6,7 @@ import {
   Upload,
   CheckCircle2,
   AlertOctagon,
+  AlertTriangle,
   Sparkles,
   Volume2,
   Sprout,
@@ -15,7 +16,9 @@ import {
   RefreshCw,
   Info,
   SwitchCamera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ShieldAlert,
+  HelpCircle
 } from 'lucide-react';
 import { analyzeSoilImage } from '../../services/soilAnalysisService';
 import { useVoice } from '../../hooks/useVoice';
@@ -29,12 +32,14 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const nativeCameraInputRef = useRef(null);
 
   const [stream, setStream] = useState(null);
   const [facingMode, setFacingMode] = useState('environment'); // 'environment' (back) or 'user' (front)
   const [cameraError, setCameraError] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [validationStage, setValidationStage] = useState(''); // 'quality', 'detection', 'recommendation'
   const [analysisResult, setAnalysisResult] = useState(null);
 
   // Initialize live camera stream on modal open
@@ -47,6 +52,7 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
     setCapturedImage(null);
     setAnalysisResult(null);
     setCameraError(null);
+    setValidationStage('');
     startCamera(facingMode);
 
     // Spoken voice guidance
@@ -80,10 +86,12 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.play().catch((e) => console.log('Autoplay handled:', e));
       }
     } catch (err) {
       console.warn('Live camera access unavailable:', err);
-      setCameraError('Live camera stream unavailable. You can capture or upload an image.');
+      setCameraError('Live camera stream unavailable on this browser. You can take a photo using your phone camera or upload an image.');
     }
   };
 
@@ -99,32 +107,23 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
     setFacingMode(nextMode);
   };
 
-  // Process and analyze image for Soil Verification and Crop Recommendation
+  // Process and analyze image with multi-step validation
   const runSoilAnalysis = async (imageSrc) => {
     setIsAnalyzing(true);
+    setValidationStage('quality');
+
     try {
+      // Small simulated tick for responsive stage visualization
+      await new Promise((r) => setTimeout(r, 300));
+      setValidationStage('detection');
+
       const result = await analyzeSoilImage(imageSrc);
       setAnalysisResult(result);
 
       // Voice read-out strictly in the user's selected language
-      if (!result.isSoil) {
-        if (language === 'ta') {
-          speak('இது விவசாய மண் அல்ல. தயவுசெய்து உங்கள் நிலத்து மண்ணை கேமராவில் காட்டவும்.');
-        } else if (language === 'te') {
-          speak('ఇది వ్యవసాయ నేల కాదు. దయచేసి పొలంలోని మట్టిని కెమెరాలో చూపించండి.');
-        } else if (language === 'hi') {
-          speak('यह खेत की मिट्टी नहीं है। कृपया खेत की मिट्टी पर कैमरा रखें।');
-        } else if (language === 'kn') {
-          speak('ಇದು ಕೃಷಿ ಮಣ್ಣಲ್ಲ. ದಯವಿಟ್ಟು ಹೊಲದ ಮಣ್ಣನ್ನು ತೋರಿಸಿ.');
-        } else if (language === 'ml') {
-          speak('ഇത് കൃഷിഭൂമിയിലെ മണ്ണല്ല. ദയവായി മണ്ണിലേക്ക് ക്യാമറ തിരിക്കുക.');
-        } else if (language === 'mr') {
-          speak('ही शेतीची माती नाही. कृपया शेतातील मातीचा फोटो काढा.');
-        } else if (language === 'bn') {
-          speak('এটি কৃষি মাটি নয়। দয়া করে জমির মাটির ছবি তুলুন।');
-        } else {
-          speak('This is not agricultural soil. Please point your camera directly at the farm soil.');
-        }
+      if (!result.isValid || !result.isSoil) {
+        const voiceError = result.localizedMessages?.[language] || result.message;
+        speak(voiceError, language);
       } else {
         const profile = result.profile;
         const soilName = profile.name[language] || profile.name['en'];
@@ -132,27 +131,26 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
         const cropName = topCrop.name[language] || topCrop.name['en'];
 
         if (language === 'ta') {
-          speak(`மண் பரிசோதனை முடிந்தது. இது ${soilName}. உங்கள் நிலத்திற்கு ஏற்ற பயிர் ${cropName}. எதிர்பார்க்கப்படும் மகசூல்: ${topCrop.expectedYield}.`);
+          speak(`மண் உறுதிசெய்யப்பட்டது. இது ${soilName}. பரிந்துரைக்கப்பட்ட முதன்மை பயிர் ${cropName}. எதிர்பார்க்கப்படும் மகசூல்: ${topCrop.expectedYield}.`);
         } else if (language === 'te') {
-          speak(`నేల గుర్తింపు పూర్తయింది. ఇది ${soilName}. అనువైన పంట ${cropName}. దిగుబడి: ${topCrop.expectedYield}.`);
+          speak(`నేల నిర్ధారించబడింది. ఇది ${soilName}. అనువైన పంట ${cropName}. దిగుబడి: ${topCrop.expectedYield}.`);
         } else if (language === 'hi') {
-          speak(`मिट्टी की जांच पूरी हुई। यह ${soilName} है। सबसे उपयुक्त फसल ${cropName} है। पैदावार: ${topCrop.expectedYield}।`);
-        } else if (language === 'kn') {
-          speak(`ಮಣ್ಣಿನ ಪರೀಕ್ಷೆ ಪೂರ್ಣಗೊಂಡಿದೆ. ಇದು ${soilName}. ಸೂಕ್ತ ಬೆಳೆ ${cropName}.`);
-        } else if (language === 'ml') {
-          speak(`മണ്ണ് പരിശോധന കഴിഞ്ഞു. ഇത് ${soilName}. അനുയോജ്യമായ വിള ${cropName}.`);
-        } else if (language === 'mr') {
-          speak(`मातीची तपासणी पूर्ण झाली. ही ${soilName} आहे. योग्य पीक ${cropName}.`);
-        } else if (language === 'bn') {
-          speak(`মাটি পরীক্ষা সম্পন্ন হয়েছে। এটি ${soilName}। উপযুক্ত ফসল ${cropName}।`);
+          speak(`मिट्टी की पुष्टि हुई। यह ${soilName} है। अनुशंसित फसल ${cropName} है। पैदावार: ${topCrop.expectedYield}।`);
         } else {
-          speak(`Soil check complete. Detected: ${soilName}. Best recommended crop is ${cropName} with expected yield ${topCrop.expectedYield}.`);
+          speak(`Soil verified. Detected: ${soilName}. Top recommended crop is ${cropName} with expected yield ${topCrop.expectedYield}.`);
         }
       }
     } catch (err) {
       console.error(err);
+      setAnalysisResult({
+        isValid: false,
+        isSoil: false,
+        status: 'POOR_QUALITY',
+        message: 'Image is not clear enough. Please capture a clear photo of the soil and try again.'
+      });
     } finally {
       setIsAnalyzing(false);
+      setValidationStage('');
     }
   };
 
@@ -173,20 +171,26 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
     runSoilAnalysis(dataUrl);
   };
 
-  // Fallback Gallery File Upload
+  // Gallery File Upload
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const url = URL.createObjectURL(file);
-    setCapturedImage(url);
-    stopCamera();
-    runSoilAnalysis(url);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      setCapturedImage(dataUrl);
+      stopCamera();
+      runSoilAnalysis(dataUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleRetake = () => {
+    stop();
     setCapturedImage(null);
     setAnalysisResult(null);
+    setValidationStage('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     startCamera(facingMode);
   };
@@ -210,10 +214,10 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h3 className="text-lg font-black font-display text-white">
-                  Live Soil Scanner & Crop Recommendation
+                  Soil Scanner & Crop Recommendation
                 </h3>
                 <p className="text-xs text-emerald-400 font-bold">
-                  {t('cropAdvice')} & {t('tagSoilSeeds')}
+                  Stage 1: Quality Check • Stage 2: Soil Detection • Stage 3: Crop Match
                 </p>
               </div>
             </div>
@@ -221,6 +225,7 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
             <button
               type="button"
               onClick={() => {
+                stop();
                 stopCamera();
                 onClose();
               }}
@@ -240,23 +245,42 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
               onChange={handleFileSelect}
               className="hidden"
             />
+            <input
+              type="file"
+              ref={nativeCameraInputRef}
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
 
             {/* VIEW 1: LIVE CAMERA VIEWFINDER */}
             {!capturedImage ? (
               <div className="space-y-4">
                 <div className="relative w-full h-80 sm:h-96 rounded-3xl overflow-hidden bg-slate-950 shadow-inner flex items-center justify-center">
                   {cameraError ? (
-                    <div className="p-6 text-center space-y-3 text-white">
-                      <Camera className="w-12 h-12 text-slate-500 mx-auto" />
-                      <p className="text-xs text-slate-300 max-w-xs mx-auto">{cameraError}</p>
-                      <Button
-                        variant="primary"
-                        icon={Upload}
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        Upload Soil Photo
-                      </Button>
+                    <div className="p-6 text-center space-y-4 text-white">
+                      <Camera className="w-12 h-12 text-emerald-400 mx-auto" />
+                      <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed">{cameraError}</p>
+                      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                        <Button
+                          variant="primary"
+                          icon={Camera}
+                          size="sm"
+                          onClick={() => nativeCameraInputRef.current?.click()}
+                        >
+                          Snap Phone Photo
+                        </Button>
+                        <Button
+                          variant="outline"
+                          icon={Upload}
+                          size="sm"
+                          className="!text-white !border-white/30"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Upload from Gallery
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -274,8 +298,8 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
                           <span className="w-4 h-4 border-t-2 border-l-2 border-emerald-400"></span>
                           <span className="w-4 h-4 border-t-2 border-r-2 border-emerald-400"></span>
                         </div>
-                        <div className="text-center bg-black/40 backdrop-blur-sm py-1 px-3 rounded-full text-[11px] font-bold text-white max-w-xs mx-auto">
-                          📍 Place soil sample or plowed earth inside frame
+                        <div className="text-center bg-black/50 backdrop-blur-sm py-1.5 px-3.5 rounded-full text-[11px] font-bold text-white max-w-xs mx-auto border border-white/10">
+                          📍 Place clear, unobstructed farm soil inside frame
                         </div>
                         <div className="flex justify-between">
                           <span className="w-4 h-4 border-b-2 border-l-2 border-emerald-400"></span>
@@ -304,33 +328,31 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
                     className="p-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 transition-all cursor-pointer flex flex-col items-center gap-1 text-[11px] font-bold shadow-sm"
                   >
                     <ImageIcon className="w-5 h-5 text-emerald-700" />
-                    <span>Upload</span>
+                    <span>Gallery</span>
                   </button>
 
                   {/* Giant Live Shutter Trigger */}
                   <button
                     type="button"
-                    onClick={handleCaptureLivePhoto}
-                    disabled={!!cameraError}
-                    className="w-20 h-20 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-50 text-white shadow-xl ring-4 ring-emerald-300 flex items-center justify-center transition-all cursor-pointer"
-                    title="Capture Live Photo"
+                    onClick={cameraError ? () => nativeCameraInputRef.current?.click() : handleCaptureLivePhoto}
+                    className="w-20 h-20 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-xl ring-4 ring-emerald-300 flex items-center justify-center transition-all cursor-pointer"
+                    title="Capture Soil Photo"
                   >
                     <Camera className="w-9 h-9" />
                   </button>
 
                   <button
                     type="button"
-                    onClick={toggleCamera}
-                    disabled={!!cameraError}
+                    onClick={cameraError ? () => nativeCameraInputRef.current?.click() : toggleCamera}
                     className="p-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 transition-all cursor-pointer flex flex-col items-center gap-1 text-[11px] font-bold shadow-sm"
                   >
                     <SwitchCamera className="w-5 h-5 text-slate-700" />
-                    <span>Flip</span>
+                    <span>Flip / Snap</span>
                   </button>
                 </div>
               </div>
             ) : (
-              /* VIEW 2: CAPTURED IMAGE & LIVE SOIL ANALYSIS RESULTS */
+              /* VIEW 2: CAPTURED IMAGE & LIVE SOIL VALIDATION RESULTS */
               <div className="space-y-6">
                 {/* Captured Image Strip */}
                 <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
@@ -340,33 +362,38 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
                     className="w-28 h-28 object-cover rounded-2xl border-2 border-slate-300 shadow-md"
                   />
                   <div className="flex-1 space-y-2 text-center sm:text-left">
-                    <span className="text-xs font-bold text-slate-500 uppercase">Live Photo Captured</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase">Captured Image</span>
                     <h4 className="text-base font-black text-slate-900 font-display">
                       Soil Image Evaluation
                     </h4>
                     <button
                       type="button"
                       onClick={handleRetake}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Retake Live Photo</span>
+                      <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Retake / Capture Again</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Analyzing Spinner */}
+                {/* Validation Loading Spinner */}
                 {isAnalyzing && (
                   <div className="p-8 text-center space-y-3 bg-emerald-50 rounded-3xl border border-emerald-200">
                     <Sparkles className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
                     <h4 className="text-base font-black text-emerald-950 font-display">
-                      AI is inspecting soil structure, organic matter & NPK...
+                      {validationStage === 'quality'
+                        ? 'Step 1: Checking image resolution, lighting & blur...'
+                        : 'Step 2: Verifying agricultural soil & analyzing texture...'}
                     </h4>
+                    <p className="text-xs text-emerald-800">
+                      Validating whether the image contains clearly visible agricultural soil...
+                    </p>
                   </div>
                 )}
 
-                {/* RESULT: NOT SOIL */}
-                {analysisResult && !analysisResult.isSoil && (
+                {/* REJECTION STATE: POOR QUALITY, NOT SOIL, OR INSUFFICIENT SOIL */}
+                {analysisResult && (!analysisResult.isValid || !analysisResult.isSoil) && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -374,51 +401,53 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
                   >
                     <div className="flex items-center gap-3 justify-center sm:justify-start">
                       <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                        <AlertOctagon className="w-7 h-7" />
+                        {analysisResult.status === 'POOR_QUALITY' ? (
+                          <AlertTriangle className="w-7 h-7" />
+                        ) : (
+                          <AlertOctagon className="w-7 h-7" />
+                        )}
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-rose-950 font-display">
-                          {language === 'ta'
-                            ? 'விவசாய மண் அல்ல'
-                            : language === 'te'
-                            ? 'వ్యవసాయ నేల కాదు'
-                            : language === 'hi'
-                            ? 'खेत की मिट्टी नहीं है'
+                        <h3 className="text-lg sm:text-xl font-black text-rose-950 font-display">
+                          {analysisResult.status === 'POOR_QUALITY'
+                            ? 'Image Quality Issue'
+                            : analysisResult.status === 'INSUFFICIENT_SOIL'
+                            ? 'Insufficient Soil Information'
                             : 'Not Agricultural Soil'}
                         </h3>
-                        <p className="text-xs font-bold text-rose-700">
-                          {t('confidenceLabel')}: 95%
-                        </p>
+                        <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">
+                          Crop recommendation withheld
+                        </span>
                       </div>
                     </div>
 
-                    <div className="p-4 bg-white rounded-2xl border border-rose-200 text-xs sm:text-sm text-rose-900 font-medium leading-relaxed">
+                    {/* Standard Exact Message */}
+                    <div className="p-4 bg-white rounded-2xl border border-rose-200 text-xs sm:text-sm text-rose-950 font-bold leading-relaxed shadow-sm">
                       <p>
-                        {language === 'ta'
-                          ? 'கேமராவில் காட்டப்பட்ட பொருள் விவசாய மண் அல்ல. தயவுசெய்து உங்கள் நிலத்து மண்ணை கேமராவில் காட்டி மீண்டும் எடுக்கவும்.'
-                          : language === 'te'
-                          ? 'ఫోటోలో వ్యవసాయ నేల గుర్తించబడలేదు. దయచేసి పొలంలోని మట్టిని కెమెరాలో చూపించి మళ్ళీ తీయండి.'
-                          : language === 'hi'
-                          ? 'तस्वीर में खेत की मिट्टी नहीं दिखी। कृपया खेत की असली मिट्टी की तस्वीर दोबारा खींचें।'
-                          : 'The captured image does not show agricultural soil. Please point camera directly at farm earth or plowed field.'}
+                        {analysisResult.localizedMessages?.[language] || analysisResult.message}
                       </p>
+                      {analysisResult.status === 'NOT_SOIL' && (
+                        <p className="text-xs text-slate-500 font-normal mt-1 pt-1 border-t border-slate-100">
+                          (Rejected: humans, leaves, animals, buildings, roads, vehicles, sky, water, food, screens or unrelated objects).
+                        </p>
+                      )}
                     </div>
 
-                    <div className="flex justify-center sm:justify-start">
+                    <div className="flex justify-center sm:justify-start pt-1">
                       <Button
                         variant="primary"
                         icon={Camera}
                         onClick={handleRetake}
-                        className="bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-600/30 font-black text-xs sm:text-sm"
+                        className="!bg-rose-600 hover:!bg-rose-700 shadow-lg shadow-rose-600/30 font-black text-xs sm:text-sm"
                       >
-                        Retake Soil Photo
+                        Retake / Capture Again
                       </Button>
                     </div>
                   </motion.div>
                 )}
 
-                {/* RESULT: VALID SOIL WITH ACCURATE RESULTS */}
-                {analysisResult && analysisResult.isSoil && analysisResult.profile && (
+                {/* SUCCESS STATE: VALID SOIL WITH ACCURATE RECOMMENDATIONS */}
+                {analysisResult && analysisResult.isValid && analysisResult.isSoil && analysisResult.profile && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -436,15 +465,28 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
                           <h3 className="text-xl font-black font-display text-white mt-0.5">
                             {analysisResult.profile.name[language] || analysisResult.profile.name['en']}
                           </h3>
+                          <p className="text-xs text-emerald-100/90 mt-0.5">
+                            {analysisResult.profile.texture[language] || analysisResult.profile.texture['en']}
+                          </p>
                         </div>
                       </div>
 
-                      <span className="px-3.5 py-1.5 rounded-full bg-emerald-700 text-emerald-100 text-xs font-black">
-                        {t('confidenceLabel')}: 96%
-                      </span>
+                      {analysisResult.confidence && (
+                        <span className="px-3.5 py-1.5 rounded-full bg-emerald-700 text-emerald-100 text-xs font-black flex-shrink-0">
+                          Confidence: {analysisResult.confidence}%
+                        </span>
+                      )}
                     </div>
 
-                    {/* Soil Parameters Grid */}
+                    {/* Agronomic Explanation */}
+                    {analysisResult.profile.explanation && (
+                      <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 leading-relaxed font-medium">
+                        <strong>Soil Agronomic Analysis: </strong>
+                        {analysisResult.profile.explanation[language] || analysisResult.profile.explanation['en']}
+                      </div>
+                    )}
+
+                    {/* Soil Chemical Properties Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-1">
                         <span className="text-[10px] font-black uppercase text-slate-500">pH Level</span>
@@ -479,7 +521,7 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
                       </h4>
 
                       {analysisResult.profile.recommendedCrops.map((crop, idx) => (
-                        <div key={idx} className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2">
+                        <div key={idx} className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
                           <div className="flex items-center justify-between">
                             <h5 className="text-sm font-black text-slate-900">
                               {crop.name[language] || crop.name['en']} ({crop.variety})
@@ -494,11 +536,22 @@ const SoilScannerModal = ({ isOpen, onClose }) => {
                             <div><strong>Est. Profit:</strong> {crop.profit}</div>
                           </div>
 
-                          <p className="text-[11px] text-slate-600 bg-white/70 p-2 rounded-xl border border-emerald-100">
+                          <p className="text-[11px] text-slate-600 bg-white/80 p-2 rounded-xl border border-emerald-100">
                             <strong>Fertilizer Dosage:</strong> {crop.fertilizer}
                           </p>
                         </div>
                       ))}
+                    </div>
+
+                    <div className="flex justify-center pt-2">
+                      <Button
+                        variant="outline"
+                        icon={RefreshCw}
+                        size="sm"
+                        onClick={handleRetake}
+                      >
+                        Scan Another Soil Sample
+                      </Button>
                     </div>
                   </motion.div>
                 )}

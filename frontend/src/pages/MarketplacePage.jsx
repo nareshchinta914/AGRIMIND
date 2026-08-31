@@ -387,7 +387,7 @@ const MarketplacePage = () => {
                         <span className="text-xs text-slate-500 font-medium"> / Quintal</span>
                       </div>
                       <span className="text-xs font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-lg">
-                        ₹{(Number(item.modalPrice || item.price || 0) / 100).toFixed(1)} / kg
+                        ₹{(Number(item.pricePerKg || (item.modalPrice || item.price || 0) / 100)).toFixed(1)} / kg
                       </span>
                     </div>
 
@@ -395,6 +395,12 @@ const MarketplacePage = () => {
                       <p className="flex items-center gap-1.5 font-bold">
                         <MapPin className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                         <span>{item.market}, {item.state}</span>
+                      </p>
+                      <p className="text-[11px] text-slate-500 flex items-center justify-between pt-0.5">
+                        <span>Range: ₹{item.minPrice || item.modalPrice} - ₹{item.maxPrice || item.modalPrice}</span>
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                          {item.isToday ? "Today's Data" : `Data: ${item.arrivalDate || 'Recent'}`}
+                        </span>
                       </p>
                     </div>
                   </div>

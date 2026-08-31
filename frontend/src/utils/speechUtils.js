@@ -10,7 +10,96 @@ export const LANG_SPEECH_CODES = {
   ml: 'ml-IN',
   mr: 'mr-IN',
   bn: 'bn-IN',
+  gu: 'gu-IN',
+  pa: 'pa-IN',
+  or: 'or-IN',
   en: 'en-IN'
+};
+
+// Supported Voice Languages configuration for AGRIMIND (All configured languages)
+export const VOICE_SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English', nativeName: 'English', speechCode: 'en-IN', flag: '🌐' },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', speechCode: 'ta-IN', flag: '🌾' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', speechCode: 'hi-IN', flag: '🚜' },
+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', speechCode: 'te-IN', flag: '🌽' },
+  { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', speechCode: 'kn-IN', flag: '🌿' },
+  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', speechCode: 'ml-IN', flag: '🌴' },
+  { code: 'mr', name: 'Marathi', nativeName: 'मराठी', speechCode: 'mr-IN', flag: '🌾' },
+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', speechCode: 'bn-IN', flag: '🌾' },
+  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી', speechCode: 'gu-IN', flag: '🌾' },
+  { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ', speechCode: 'pa-IN', flag: '🌾' }
+];
+
+/**
+ * Automatically detect Indian regional language from text script
+ */
+export const detectLanguageFromText = (text) => {
+  if (!text || typeof text !== 'string') return 'en';
+  
+  if (/[\u0B80-\u0BFF]/.test(text)) return 'ta'; // Tamil
+  if (/[\u0C00-\u0C7F]/.test(text)) return 'te'; // Telugu
+  if (/[\u0D00-\u0D7F]/.test(text)) return 'ml'; // Malayalam
+  if (/[\u0C80-\u0CFF]/.test(text)) return 'kn'; // Kannada
+  if (/[\u0A80-\u0AFF]/.test(text)) return 'gu'; // Gujarati
+  if (/[\u0A00-\u0A7F]/.test(text)) return 'pa'; // Punjabi
+  if (/[\u0B00-\u0B7F]/.test(text)) return 'or'; // Odia
+  if (/[\u0980-\u09FF]/.test(text)) return 'bn'; // Bengali
+  if (/[\u0900-\u097F]/.test(text)) return 'hi'; // Hindi / Marathi / Devanagari
+
+  return 'en';
+};
+
+/**
+ * Translate speech recognition errors into user-friendly guidance
+ */
+export const getFriendlySpeechError = (error, language = 'en') => {
+  const errType = typeof error === 'string' ? error : error?.error || '';
+  
+  const isTa = language === 'ta';
+  const isTe = language === 'te';
+  const isHi = language === 'hi';
+  const isMl = language === 'ml';
+  const isKn = language === 'kn';
+
+  if (errType === 'not-allowed' || errType === 'service-not-allowed') {
+    if (isTa) return 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது. பிரவுசர் அமைப்புகளில் மைக்கை அனுமதிக்கவும்.';
+    if (isTe) return 'మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో మైక్‌ను అనుమతించండి.';
+    if (isHi) return 'माइक्रोफ़ोन की अनुमति अस्वीकृत है। कृपया ब्राउज़र सेटिंग्स में माइक की अनुमति दें।';
+    if (isMl) return 'മൈക്രോഫോൺ അനുമതി നിഷേധിച്ചു. ദയവായി ബ്രൗസർ ക്രമീകരണങ്ങളിൽ മൈക്ക് അനുവദിക്കുക.';
+    if (isKn) return 'ಮೈಕ್ರೊಫೋನ್ ಅನುಮತಿಯನ್ನು ನಿರಾಕರಿಸಲಾಗಿದೆ. ದಯವಿಟ್ಟು ಬ್ರೌಸರ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಮೈಕ್ ಅನ್ನು ಅನುಮತಿಸಿ.';
+    return 'Microphone permission denied. Please allow microphone access in your browser settings to speak.';
+  }
+
+  if (errType === 'no-speech') {
+    if (isTa) return 'குரல் கேட்கவில்லை. மைக் அருகே தெளிவாக பேசவும்.';
+    if (isTe) return 'ఎలాంటి మాటలు వినిపించలేదు. దయచేసి మైక్ దగ్గర స్పష్టంగా మాట్లాడండి.';
+    if (isHi) return 'कोई आवाज़ सुनाई नहीं दी। कृपया माइक के पास साफ़ बोलें।';
+    if (isMl) return 'ശബ്ദം കേൾക്കാൻ കഴിഞ്ഞില്ല. ദയവായി മൈക്കിന് അരികിൽ വ്യക്തമായി സംസാരിക്കുക.';
+    if (isKn) return 'ಯಾವುದೇ ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮೈಕ್ ಬಳಿ ಸ್ಪಷ್ಟವಾಗಿ ಮಾತನಾಡಿ.';
+    return 'No speech detected. Please speak closer to your microphone and try again.';
+  }
+
+  if (errType === 'network') {
+    if (isTa) return 'இணைய இணைப்பு குறைபாடு. நீங்கள் டைப் செய்தும் கேள்வி கேட்கலாம்.';
+    if (isTe) return 'నెట్‌వర్క్ సమస్య ఉంది. మీరు టైప్ చేసి కూడా అడగవచ్చు.';
+    if (isHi) return 'नेटवर्क समस्या है। आप टाइप करके भी पूछ सकते हैं।';
+    if (isMl) return 'നെറ്റ്‌വർക്ക് പ്രശ്നം. നിങ്ങൾക്ക് ടൈപ്പ് ചെയ്തും ചോദിക്കാം.';
+    if (isKn) return 'ನೆಟ್‌ವರ್ಕ್ ಸಮಸ್ಯೆ ಇದೆ. ನೀವು ಟೈಪ್ ಮಾಡುವ ಮೂಲಕವೂ ಕೇಳಬಹುದು.';
+    return 'Network connection issue for speech service. You can also type your question.';
+  }
+
+  if (errType === 'audio-capture') {
+    if (isTa) return 'மைக்ரோஃபோன் கிடைக்கவில்லை. மைக் இணைக்கப்பட்டுள்ளதா என சரிபார்க்கவும்.';
+    if (isTe) return 'మైక్రోఫోన్ కనెక్ట్ కాలేదు. దయచేసి మైక్ చెక్ చేయండి.';
+    if (isHi) return 'माइक्रोफ़ोन नहीं मिला। कृपया माइक कनेक्शन जांचें।';
+    return 'No microphone found. Please ensure a working microphone is connected.';
+  }
+
+  if (errType === 'aborted') {
+    return null; // Silent abort on user stop
+  }
+
+  return 'Voice recognition issue. Please tap the mic again or type your question.';
 };
 
 // Friendly audio chime on listening start
@@ -35,7 +124,21 @@ export const playChime = (frequency = 587.33, type = 'sine', duration = 0.15) =>
 };
 
 /**
- * Initialize Web Speech Recognition
+ * Check if Web Speech Recognition is supported
+ */
+export const isSpeechRecognitionSupported = () => {
+  return typeof window !== 'undefined' && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+};
+
+/**
+ * Check if Web Speech Synthesis (TTS) is supported
+ */
+export const isSpeechSynthesisSupported = () => {
+  return typeof window !== 'undefined' && Boolean(window.speechSynthesis);
+};
+
+/**
+ * Initialize Web Speech Recognition with full event handling
  */
 export const createSpeechRecognizer = ({
   language = 'en',
@@ -74,11 +177,15 @@ export const createSpeechRecognizer = ({
       }
     }
 
+    const currentText = finalTranscript || interimTranscript;
+    const detectedLang = detectLanguageFromText(currentText);
+
     if (onResult) {
       onResult({
         final: finalTranscript,
         interim: interimTranscript,
-        transcript: finalTranscript || interimTranscript,
+        transcript: currentText,
+        detectedLang: detectedLang !== 'en' ? detectedLang : language,
       });
     }
   };
@@ -111,62 +218,88 @@ export const speakText = (text, language = 'en', callbacks = {}) => {
 
   if (!text) return;
 
-  const cleanText = text.replace(/[*#_`]/g, '').trim();
+  // Clean markdown / symbols for natural spoken speech
+  const cleanText = text
+    .replace(/[*#_`~>]/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .trim();
+
+  if (!cleanText) return;
+
+  // Detect script from text so voice engine uses the true language of the text
+  const scriptLang = detectLanguageFromText(cleanText);
+  const langCode = (scriptLang !== 'en' ? scriptLang : language || 'en').toLowerCase().slice(0, 2);
+  const speechLang = LANG_SPEECH_CODES[langCode] || 'en-IN';
+
   const utterance = new SpeechSynthesisUtterance(cleanText);
-  const speechLang = LANG_SPEECH_CODES[language] || 'en-IN';
   utterance.lang = speechLang;
-  utterance.rate = 0.95; // Slightly slower, clear cadence for rural farmers
+  utterance.rate = 0.95; // Clear natural pacing for farmers
   utterance.pitch = 1.0;
 
-  // Try to match native Indian regional voice if installed
-  const voices = window.speechSynthesis.getVoices();
-  const matchedVoice = voices.find(
-    (v) => v.lang.toLowerCase().replace('_', '-') === speechLang.toLowerCase()
-  );
-  if (matchedVoice) {
-    utterance.voice = matchedVoice;
+  // Select matching voice
+  const updateVoiceAndSpeak = () => {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      const matchedVoice = voices.find(
+        (v) => v.lang.toLowerCase().replace('_', '-') === speechLang.toLowerCase()
+      ) || voices.find(
+        (v) => v.lang.toLowerCase().startsWith(langCode)
+      );
+
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      }
+    }
+
+    utterance.onstart = () => {
+      if (callbacks.onStart) callbacks.onStart();
+    };
+
+    utterance.onend = () => {
+      currentUtterance = null;
+      if (callbacks.onEnd) callbacks.onEnd();
+    };
+
+    utterance.onerror = (err) => {
+      console.warn('TTS Speech synthesis error:', err);
+      currentUtterance = null;
+      if (callbacks.onError) callbacks.onError(err);
+    };
+
+    currentUtterance = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      updateVoiceAndSpeak();
+    };
+  } else {
+    updateVoiceAndSpeak();
   }
-
-  utterance.onstart = () => {
-    if (callbacks.onStart) callbacks.onStart();
-  };
-
-  utterance.onend = () => {
-    currentUtterance = null;
-    if (callbacks.onEnd) callbacks.onEnd();
-  };
-
-  utterance.onerror = (err) => {
-    console.warn('TTS Speech synthesis error:', err);
-    currentUtterance = null;
-    if (callbacks.onError) callbacks.onError(err);
-  };
-
-  currentUtterance = utterance;
-  window.speechSynthesis.speak(utterance);
 };
 
 export const stopSpeech = () => {
-  if ('speechSynthesis' in window) {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     currentUtterance = null;
   }
 };
 
 export const pauseSpeech = () => {
-  if ('speechSynthesis' in window) {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.pause();
   }
 };
 
 export const resumeSpeech = () => {
-  if ('speechSynthesis' in window) {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.resume();
   }
 };
 
 export const isSpeaking = () => {
-  return window.speechSynthesis ? window.speechSynthesis.speaking : false;
+  return typeof window !== 'undefined' && window.speechSynthesis ? window.speechSynthesis.speaking : false;
 };
 
 /**
@@ -184,6 +317,10 @@ export const parseVoiceCommand = (text) => {
     lower.includes('மழை') ||
     lower.includes('వాతావరణం') ||
     lower.includes('వర్షం') ||
+    lower.includes('മഴ') ||
+    lower.includes('കാലാവസ്ഥ') ||
+    lower.includes('ಹವಾಮಾನ') ||
+    lower.includes('ಮಳೆ') ||
     lower.includes('मौसम') ||
     lower.includes('बारिश')
   ) {
@@ -198,6 +335,10 @@ export const parseVoiceCommand = (text) => {
     lower.includes('பாசனம்') ||
     lower.includes('నీరు') ||
     lower.includes('నీటిపారుదల') ||
+    lower.includes('വെള്ളം') ||
+    lower.includes('നനയ്ക്കൽ') ||
+    lower.includes('ನೀರು') ||
+    lower.includes('ನೀರಾವರಿ') ||
     lower.includes('पानी') ||
     lower.includes('सिंचाई')
   ) {
@@ -213,6 +354,10 @@ export const parseVoiceCommand = (text) => {
     lower.includes('உரம்') ||
     lower.includes('పంట') ||
     lower.includes('ఎరువులు') ||
+    lower.includes('വിള') ||
+    lower.includes('വളം') ||
+    lower.includes('ಬೆಳೆ') ||
+    lower.includes('ಗೊಬ್ಬರ') ||
     lower.includes('फसल') ||
     lower.includes('खाद')
   ) {
@@ -229,6 +374,10 @@ export const parseVoiceCommand = (text) => {
     lower.includes('விற்பனை') ||
     lower.includes('ధర') ||
     lower.includes('మండి') ||
+    lower.includes('വിപണി') ||
+    lower.includes('വില') ||
+    lower.includes('ಮಾರುಕಟ್ಟೆ') ||
+    lower.includes('ದರ') ||
     lower.includes('मंडी') ||
     lower.includes('दाम')
   ) {
@@ -245,6 +394,10 @@ export const parseVoiceCommand = (text) => {
     lower.includes('இலை') ||
     lower.includes('ఫోటో') ||
     lower.includes('ఆకు') ||
+    lower.includes('ഫോട്ടോ') ||
+    lower.includes('ഇല') ||
+    lower.includes('ಫೋಟೋ') ||
+    lower.includes('ಎಲೆ') ||
     lower.includes('तस्वीर') ||
     lower.includes('पत्ती')
   ) {
@@ -254,3 +407,4 @@ export const parseVoiceCommand = (text) => {
   // General Question
   return { type: 'query', text };
 };
+

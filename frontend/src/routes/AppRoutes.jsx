@@ -32,6 +32,7 @@ import FarmerReportsPage from '../pages/farmer/FarmerReportsPage';
 import FarmerActivitiesPage from '../pages/farmer/FarmerActivitiesPage';
 import FarmerAssistantPage from '../pages/farmer/FarmerAssistantPage';
 import FarmerMarketplacePage from '../pages/farmer/FarmerMarketplacePage';
+import FarmerMarketPricesPage from '../pages/farmer/FarmerMarketPricesPage';
 
 // Customer Suite Pages
 import CustomerDashboard from '../pages/customer/CustomerDashboard';
@@ -136,6 +137,7 @@ const AppRoutes = () => {
         <Route path="/farmer/activities" element={<FarmerActivitiesPage />} />
         <Route path="/farmer/assistant" element={<FarmerAssistantPage />} />
         <Route path="/farmer/marketplace" element={<FarmerMarketplacePage />} />
+        <Route path="/farmer/prices" element={<FarmerMarketPricesPage />} />
       </Route>
 
       {/* 4. CUSTOMER DASHBOARD & SUITE */}

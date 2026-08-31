@@ -37,6 +37,7 @@ const Sidebar = () => {
     { name: 'Crop Recommendation', path: '/farmer/crops', icon: Sprout },
     { name: 'Water Advice', path: '/farmer/water', icon: Droplets },
     { name: 'Weather Radar', path: '/farmer/weather', icon: CloudSun },
+    { name: 'Mandi Market Prices', path: '/farmer/prices', icon: TrendingUp },
     { name: 'Farm Cost & Profit', path: '/farmer/cost', icon: Calculator },
     { name: 'Farm Reports', path: '/farmer/reports', icon: BarChart3 },
     { name: 'Farm Activities', path: '/farmer/activities', icon: CalendarDays },
