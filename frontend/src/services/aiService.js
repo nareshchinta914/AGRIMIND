@@ -131,8 +131,8 @@ const KISAN_AI_RESPONSES = {
 
 export const aiService = {
   async askKisanAI(message, language = 'en', coords = null) {
-    const detected = detectLanguageFromText(message);
-    const lang = (detected !== 'en' ? detected : language || 'en').toLowerCase().slice(0, 2);
+    const detected = detectLanguageFromText(message, language);
+    const lang = (detected || language || 'en').toLowerCase().slice(0, 2);
 
     try {
       const response = await api.post('/assistant/chat', { message, language: lang, coords });

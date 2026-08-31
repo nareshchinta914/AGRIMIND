@@ -36,7 +36,7 @@ const NATIVE_ADVISORY = {
   disease: {
     en: 'For leaf spots or yellowing: Spray Propiconazole 25% EC (1 ml per liter of water) or Neem Oil 10,000 ppm (3 ml/L) for organic control. Avoid water stagnation in the field to prevent root rot.',
     ta: 'இலைப்புள்ளி மற்றும் மஞ்சள் நோய்க்கு: ஒரு லிட்டர் தண்ணீரில் 1 மிலி புரோபிகோனசோல் அல்லது 3 மிலி வேப்பெண்ணெய் கரைத்து தெளிக்கவும். வயலில் நீர் தேங்காமல் பார்த்துக் கொள்ளுங்கள்.',
-    te: 'ఆకుமచ్చ లేదా పసుపు తెగులు నివారణకు: లీటరు నీటికి 1 మి.లీ ప్రొపికొనజోల్ లేదా 3 మి.లీ వేప నూనె కలిపి పిచికారీ చేయండి. మడిలో నీరు నిల్వ ఉండకుండా చూడండి.',
+    te: 'ఆకుమచ్చ లేదా పసుపు తెగులు నివారణకు: లీటరు నీటికి 1 మి.లీ ప్రొపికొనజోల్ లేదా 3 మి.లీ వేప నూనె కలిపి పిచికారీ చేయండి. మడిలో నీరు నిల్వ ఉండకుండా చూడండి.',
     hi: 'पत्तियों के धब्बों या पीलेपन के लिए: 1 मिली प्रोपिकोनाज़ोल प्रति लीटर पानी या 3 मिली नीम तेल मिलाकर छिड़कें। खेत में जलभराव न होने दें।',
     kn: 'ಎಲೆ ಚುಕ್ಕೆ ಅಥವಾ ಹಳದಿ ರೋಗಕ್ಕೆ: ಪ್ರತಿ ಲೀಟರ್ ನೀರಿಗೆ 1 ಮಿಲಿ ಪ್ರೊಪಿಕೊನಾಜೋಲ್ ಅಥವಾ 3 ಮಿಲಿ ಬೇವಿನ ಎಣ್ಣೆ ಬೆರೆಸಿ ಸಿಂಪಡಿಸಿ.',
     ml: 'ഇലപ്പുള്ളി രോഗത്തിന്: ഒരു ലിറ്റർ വെള്ളത്തിൽ 1 മില്ലി പ്രൊപികൊണസോൾ അല്ലെങ്കിൽ 3 മില്ലി വേപ്പെണ്ണ കലക്കി തളിക്കുക.',
@@ -71,19 +71,32 @@ class AssistantController {
         return errorResponse(res, 'Message is required', 'MISSING_MESSAGE', 400);
       }
 
-      // Detect language from text script if native characters are present, else use specified language
-      let detectedLang = (language || 'en').toLowerCase().slice(0, 2);
-      if (/[\u0B80-\u0BFF]/.test(message)) detectedLang = 'ta'; // Tamil
-      else if (/[\u0C00-\u0C7F]/.test(message)) detectedLang = 'te'; // Telugu
-      else if (/[\u0D00-\u0D7F]/.test(message)) detectedLang = 'ml'; // Malayalam
-      else if (/[\u0C80-\u0CFF]/.test(message)) detectedLang = 'kn'; // Kannada
-      else if (/[\u0A80-\u0AFF]/.test(message)) detectedLang = 'gu'; // Gujarati
-      else if (/[\u0A00-\u0A7F]/.test(message)) detectedLang = 'pa'; // Punjabi
-      else if (/[\u0B00-\u0B7F]/.test(message)) detectedLang = 'or'; // Odia
-      else if (/[\u0980-\u09FF]/.test(message)) detectedLang = 'bn'; // Bengali
-      else if (/[\u0900-\u097F]/.test(message)) detectedLang = 'hi'; // Hindi / Marathi
+      // 1. Detect regional Indian script from text
+      let scriptLang = null;
+      if (/[\u0B80-\u0BFF]/.test(message)) scriptLang = 'ta'; // Tamil
+      else if (/[\u0C00-\u0C7F]/.test(message)) scriptLang = 'te'; // Telugu
+      else if (/[\u0D00-\u0D7F]/.test(message)) scriptLang = 'ml'; // Malayalam
+      else if (/[\u0C80-\u0CFF]/.test(message)) scriptLang = 'kn'; // Kannada
+      else if (/[\u0A80-\u0AFF]/.test(message)) scriptLang = 'gu'; // Gujarati
+      else if (/[\u0A00-\u0A7F]/.test(message)) scriptLang = 'pa'; // Punjabi
+      else if (/[\u0B00-\u0B7F]/.test(message)) scriptLang = 'or'; // Odia
+      else if (/[\u0980-\u09FF]/.test(message)) scriptLang = 'bn'; // Bengali
+      else if (/[\u0900-\u097F]/.test(message)) scriptLang = 'hi'; // Hindi / Marathi
 
-      const langCode = detectedLang;
+      // 2. Language Determination:
+      // - If regional script is in message, ALWAYS respect the script language.
+      // - If message is English/Latin script:
+      //     - If user explicitly selected a regional language from selector (e.g. Tamil or Telugu or Hindi or Malayalam or Kannada), use that selected language.
+      //     - Otherwise use 'en' (English).
+      let langCode = 'en';
+      if (scriptLang) {
+        langCode = scriptLang;
+      } else if (language && language !== 'en') {
+        langCode = language.toLowerCase().slice(0, 2);
+      } else {
+        langCode = 'en';
+      }
+
       const targetLangName = LANGUAGE_NAMES[langCode] || 'English';
 
       const userLocation =
@@ -141,6 +154,7 @@ class AssistantController {
       if (env.GROQ_API_KEY) {
         try {
           const systemPrompt = `You are AGRIMIND Kisan AI, an expert agricultural advisor for Indian farmers, customers, and agribusinesses.
+
 Real-Time Farm Context:
 - Location: ${context.location}
 - Crop: ${context.current_crop}
@@ -149,13 +163,14 @@ Real-Time Farm Context:
 - LIVE REAL-TIME WEATHER: ${context.weather_summary}
 - OFFICIAL MANDI MARKET DATA: ${context.market_summary}
 
-CRITICAL RULES:
-1. ALWAYS write your entire response exclusively in ${targetLangName} (Language code: ${langCode}).
-2. If the user asks about crop prices, tomato price, mandi rates, etc., ALWAYS use the EXACT figures provided in OFFICIAL MANDI MARKET DATA. NEVER estimate or invent prices. Always state the market name and the arrival date.
-3. If the user asks about today's weather or rain, use the LIVE REAL-TIME WEATHER data provided in the context.
-4. Even if the user question is written in English or transliterated script, translate and deliver your full response in ${targetLangName}.
-5. Keep the tone warm, clear, and conversational so it sounds natural when spoken aloud by a voice assistant.
-6. Keep the response to 2-4 concise, impactful sentences without unnecessary preamble.`;
+CRITICAL LANGUAGE & ACCURACY RULES:
+1. Respond ONLY and EXCLUSIVELY in ${targetLangName} (Language code: ${langCode}).
+2. Do not translate the response into English unless the user explicitly requested English (langCode === 'en').
+3. Do not mix languages unless the user used mixed languages in their query.
+4. If the user asks about crop prices, tomato price, mandi rates, etc., ALWAYS use the EXACT figures provided in OFFICIAL MANDI MARKET DATA (e.g. ₹${matchedCropPrice?.modalPrice || 3200}/quintal, ₹${matchedCropPrice?.pricePerKg || 32}/kg). NEVER invent or change prices. Always state the market name and the arrival date.
+5. If the user asks about today's weather or rain, accurately report the LIVE REAL-TIME WEATHER data provided in the context.
+6. Preserve technical names, crop names, and numerical values correctly.
+7. Keep the tone warm, clear, and conversational so it sounds natural when spoken aloud by a voice assistant (2-4 concise sentences).`;
 
           const groqResponse = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
@@ -165,7 +180,7 @@ CRITICAL RULES:
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: message }
               ],
-              temperature: 0.5,
+              temperature: 0.4,
               max_tokens: 350
             },
             {
@@ -206,22 +221,22 @@ Real-Time Farm Context:
 Farmer Question: "${message}"
 
 CRITICAL INSTRUCTIONS:
-1. If the user asks about crop / mandi prices, strictly use the OFFICIAL MANDI MARKET DATA figures. NEVER invent or fabricate prices. Explicitly mention the mandi name and date.
-2. If the user asks about the weather, accurately report the LIVE REAL-TIME WEATHER observations.
-3. ALWAYS respond directly in ${targetLangName} (Language code: ${langCode}).
-4. Even if the question is in English/transliteration, deliver your advice completely in ${targetLangName}.
-5. Keep the tone warm, respectful, and encouraging.
-6. Limit the response to 3-5 concise, informative sentences.
+1. Respond ONLY and EXCLUSIVELY in ${targetLangName} (Language code: ${langCode}).
+2. Do not translate the response into English unless the user explicitly requested English (langCode === 'en').
+3. If the user asks about crop / mandi prices, strictly use the OFFICIAL MANDI MARKET DATA figures. NEVER invent or fabricate prices. Explicitly mention the mandi name and date.
+4. If the user asks about the weather, accurately report the LIVE REAL-TIME WEATHER observations.
+5. Preserve all prices and numbers accurately.
+6. Keep the tone warm, respectful, and encouraging (3-4 concise sentences).
 `.trim();
 
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
           const aiResponse = await axios.post(
             geminiUrl,
             {
               contents: [{ parts: [{ text: geminiPrompt }] }],
               generationConfig: {
-                temperature: 0.6,
-                maxOutputTokens: 600
+                temperature: 0.4,
+                maxOutputTokens: 500
               }
             },
             { timeout: 6000 }
@@ -243,14 +258,14 @@ CRITICAL INSTRUCTIONS:
         // Check if market price inquiry
         const isPriceQuery =
           lower.includes('price') || lower.includes('rate') || lower.includes('mandi') || lower.includes('cost') || lower.includes('sell') ||
-          lower.includes('விலை') || lower.includes('சந்தை') ||
-          lower.includes('ధర') || lower.includes('మార్కెట్') ||
-          lower.includes('भाव') || lower.includes('दाम') ||
-          lower.includes('ದರ') || lower.includes('ಮಾರುಕಟ್ಟೆ') ||
-          lower.includes('വില') || lower.includes('വിപണി') ||
-          lower.includes('দর') || lower.includes('বাজার') ||
-          lower.includes('ભાવ') || lower.includes('યાર્ડ') ||
-          lower.includes('ਭਾਅ') || lower.includes('ਮੰਡੀ');
+          lower.includes('விலை') || lower.includes('சந்தை') || lower.includes('ரேட்') || lower.includes('எவ்வளவு') ||
+          lower.includes('ధర') || lower.includes('మార్కెట్') || lower.includes('రేటు') || lower.includes('మండి') || lower.includes('ఎంత') ||
+          lower.includes('भाव') || lower.includes('दाम') || lower.includes('मंडी') || lower.includes('रेट') || lower.includes('कितना') ||
+          lower.includes('ಬೆಲೆ') || lower.includes('ದರ') || lower.includes('ಮಾರುಕಟ್ಟೆ') || lower.includes('ರೇಟು') || lower.includes('ಎಷ್ಟು') ||
+          lower.includes('വില') || lower.includes('വിപണി') || lower.includes('നിരക്ക്') || lower.includes('എത്ര') ||
+          lower.includes('দর') || lower.includes('দাম') || lower.includes('বাজার') || lower.includes('মান্ডি') ||
+          lower.includes('ભાવ') || lower.includes('કિંમત') || lower.includes('યાર્ડ') ||
+          lower.includes('ਭਾਅ') || lower.includes('ਮੰਡੀ') || lower.includes('ਰੇਟ');
 
         if (isPriceQuery && matchedCropPrice) {
           const p = matchedCropPrice;
@@ -271,16 +286,16 @@ CRITICAL INSTRUCTIONS:
         } else {
           // Check weather inquiry
           const isWeatherQuery =
-            lower.includes('weather') || lower.includes('rain') || lower.includes('temperature') ||
-            lower.includes('வானிலை') || lower.includes('மழை') ||
-            lower.includes('వాతావరణం') || lower.includes('వర్షం') ||
-            lower.includes('मौसम') || lower.includes('बारिश') ||
-            lower.includes('हवामान') || lower.includes('पाऊस') ||
-            lower.includes('ಹವಾಮಾನ') || lower.includes('ಮಳೆ') ||
-            lower.includes('കാലാവസ്ഥ') || lower.includes('മഴ') ||
-            lower.includes('আবহাওয়া') || lower.includes('বৃষ্টি') ||
-            lower.includes('હવામાન') || lower.includes('વરસાદ') ||
-            lower.includes('ਮੌਸਮ') || lower.includes('ਮੀਂਹ');
+            lower.includes('weather') || lower.includes('rain') || lower.includes('temperature') || lower.includes('forecast') ||
+            lower.includes('வானிலை') || lower.includes('மழை') || lower.includes('வெப்பநிலை') ||
+            lower.includes('వాతావరణం') || lower.includes('వర్షం') || lower.includes('ఉష్ణోగ్రత') ||
+            lower.includes('मौसम') || lower.includes('बारिश') || lower.includes('तापमान') ||
+            lower.includes('हवामान') || lower.includes('पाऊस') || lower.includes('तापमान') ||
+            lower.includes('ಹವಾಮಾನ') || lower.includes('ಮಳೆ') || lower.includes('ತಾಪಮಾನ') ||
+            lower.includes('കാലാവസ്ഥ') || lower.includes('മഴ') || lower.includes('താപനില') ||
+            lower.includes('আবহাওয়া') || lower.includes('বৃষ্টি') || lower.includes('তাপমাত্রা') ||
+            lower.includes('હવામાન') || lower.includes('વરસાદ') || lower.includes('તાપમાન') ||
+            lower.includes('ਮੌਸਮ') || lower.includes('ਮੀਂਹ') || lower.includes('ਤਾਪਮਾਨ');
 
           if (isWeatherQuery && liveWeather) {
             const temp = liveWeather.temperature;

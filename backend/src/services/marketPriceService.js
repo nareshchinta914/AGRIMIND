@@ -580,20 +580,53 @@ class MarketPriceService {
     });
 
     if (!match) {
-      // Check regional keywords
-      if (cleanCrop.includes('தக்காளி') || cleanCrop.includes('టమోటా') || cleanCrop.includes('टमाटर') || cleanCrop.includes('tomato')) {
+      // Check regional keywords for all supported languages
+      if (
+        cleanCrop.includes('தக்காளி') || cleanCrop.includes('టమోటా') || cleanCrop.includes('టమాట') ||
+        cleanCrop.includes('ಟೊಮೆಟೊ') || cleanCrop.includes('ಟೊಮ್ಯಾಟೊ') || cleanCrop.includes('തക്കാളി') ||
+        cleanCrop.includes('टमाटर') || cleanCrop.includes('टोमॅटो') || cleanCrop.includes('টমেটো') ||
+        cleanCrop.includes('ટામેટા') || cleanCrop.includes('ਟਮਾਟਰ') || cleanCrop.includes('tomato')
+      ) {
         match = OFFICIAL_AGMARKNET_DATA.find((d) => d.commodity.includes('Tomato'));
-      } else if (cleanCrop.includes('வெங்காயம்') || cleanCrop.includes('ఉల్లిపాయ') || cleanCrop.includes('प्याज') || cleanCrop.includes('onion')) {
+      } else if (
+        cleanCrop.includes('வெங்காயம்') || cleanCrop.includes('ఉల్లిపాయ') || cleanCrop.includes('ఉల్లి') ||
+        cleanCrop.includes('ಈರುಳ್ಳಿ') || cleanCrop.includes('സവാള') || cleanCrop.includes('ഉള്ളി') ||
+        cleanCrop.includes('प्याज') || cleanCrop.includes('कांदा') || cleanCrop.includes('পেঁয়াজ') ||
+        cleanCrop.includes('ડુંગળી') || cleanCrop.includes('ਪਿਆਜ਼') || cleanCrop.includes('onion')
+      ) {
         match = OFFICIAL_AGMARKNET_DATA.find((d) => d.commodity.includes('Onion'));
-      } else if (cleanCrop.includes('நெல்') || cleanCrop.includes('వరి') || cleanCrop.includes('धान') || cleanCrop.includes('paddy') || cleanCrop.includes('rice')) {
+      } else if (
+        cleanCrop.includes('நெல்') || cleanCrop.includes('அரிசி') || cleanCrop.includes('వరి') || cleanCrop.includes('బియ్యం') ||
+        cleanCrop.includes('ಭತ್ತ') || cleanCrop.includes('ಅಕ್ಕಿ') || cleanCrop.includes('നെല്ല്') || cleanCrop.includes('അരി') ||
+        cleanCrop.includes('धान') || cleanCrop.includes('चावल') || cleanCrop.includes('भात') || cleanCrop.includes('তাંદൂळ') ||
+        cleanCrop.includes('ধান') || cleanCrop.includes('চাল') || cleanCrop.includes('ડાંગર') || cleanCrop.includes('ચોખા') ||
+        cleanCrop.includes('ਝੋਨਾ') || cleanCrop.includes('ਚੌਲ') || cleanCrop.includes('paddy') || cleanCrop.includes('rice')
+      ) {
         match = OFFICIAL_AGMARKNET_DATA.find((d) => d.commodity.includes('Paddy'));
-      } else if (cleanCrop.includes('கோதுமை') || cleanCrop.includes('గోధుమ') || cleanCrop.includes('गेहूं') || cleanCrop.includes('wheat')) {
+      } else if (
+        cleanCrop.includes('கோதுமை') || cleanCrop.includes('గోధుమ') || cleanCrop.includes('ಗೋಧಿ') || cleanCrop.includes('ഗോതമ്പ്') ||
+        cleanCrop.includes('गेहूं') || cleanCrop.includes('गहू') || cleanCrop.includes('গম') || cleanCrop.includes('ઘઉં') ||
+        cleanCrop.includes('ਕਣਕ') || cleanCrop.includes('wheat')
+      ) {
         match = OFFICIAL_AGMARKNET_DATA.find((d) => d.commodity.includes('Wheat'));
-      } else if (cleanCrop.includes('பருத்தி') || cleanCrop.includes('పత్తి') || cleanCrop.includes('कपास') || cleanCrop.includes('cotton')) {
+      } else if (
+        cleanCrop.includes('பருத்தி') || cleanCrop.includes('పత్తి') || cleanCrop.includes('ಹತ್ತಿ') || cleanCrop.includes('പരുത്തി') ||
+        cleanCrop.includes('कपास') || cleanCrop.includes('रूई') || cleanCrop.includes('कापूस') || cleanCrop.includes('তুলা') ||
+        cleanCrop.includes('કપાસ') || cleanCrop.includes('ਕਪਾਹ') || cleanCrop.includes('cotton')
+      ) {
         match = OFFICIAL_AGMARKNET_DATA.find((d) => d.commodity.includes('Cotton'));
-      } else if (cleanCrop.includes('உருளை') || cleanCrop.includes('బంగాళాదుంప') || cleanCrop.includes('आलू') || cleanCrop.includes('potato')) {
+      } else if (
+        cleanCrop.includes('உருளை') || cleanCrop.includes('உருளைக்கிழங்கு') || cleanCrop.includes('బంగాళాదుంప') || cleanCrop.includes('ఆలూ') ||
+        cleanCrop.includes('ಆಲೂಗಡ್ಡೆ') || cleanCrop.includes('ಆಲೂ') || cleanCrop.includes('ഉരുളക്കിഴങ്ങ്') ||
+        cleanCrop.includes('आलू') || cleanCrop.includes('बटाटा') || cleanCrop.includes('আলু') ||
+        cleanCrop.includes('બટાકા') || cleanCrop.includes('ਆਲੂ') || cleanCrop.includes('potato')
+      ) {
         match = OFFICIAL_AGMARKNET_DATA.find((d) => d.commodity.includes('Potato'));
-      } else if (cleanCrop.includes('மிளகாய்') || cleanCrop.includes('మిరప') || cleanCrop.includes('मिर्च') || cleanCrop.includes('chilli')) {
+      } else if (
+        cleanCrop.includes('மிளகாய்') || cleanCrop.includes('మిరప') || cleanCrop.includes('మిరపకాయ') || cleanCrop.includes('మిర్చి') ||
+        cleanCrop.includes('ಮೆಣಸಿನಕಾಯಿ') || cleanCrop.includes('ಮುളക്') || cleanCrop.includes('मिर्च') || cleanCrop.includes('लङ्का') ||
+        cleanCrop.includes('লঙ্কা') || cleanCrop.includes('મરચાં') || cleanCrop.includes('ਮਿਰਚ') || cleanCrop.includes('chilli')
+      ) {
         match = OFFICIAL_AGMARKNET_DATA.find((d) => d.commodity.includes('Chilli'));
       }
     }

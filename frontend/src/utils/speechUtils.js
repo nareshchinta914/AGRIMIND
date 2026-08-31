@@ -3,6 +3,7 @@ import { LANGUAGES } from './constants';
 
 // BCP-47 speech codes mapping
 export const LANG_SPEECH_CODES = {
+  en: 'en-IN',
   ta: 'ta-IN',
   te: 'te-IN',
   hi: 'hi-IN',
@@ -12,16 +13,15 @@ export const LANG_SPEECH_CODES = {
   bn: 'bn-IN',
   gu: 'gu-IN',
   pa: 'pa-IN',
-  or: 'or-IN',
-  en: 'en-IN'
+  or: 'or-IN'
 };
 
 // Supported Voice Languages configuration for AGRIMIND (All configured languages)
 export const VOICE_SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English', speechCode: 'en-IN', flag: '🌐' },
   { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', speechCode: 'ta-IN', flag: '🌾' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', speechCode: 'hi-IN', flag: '🚜' },
   { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', speechCode: 'te-IN', flag: '🌽' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', speechCode: 'hi-IN', flag: '🚜' },
   { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', speechCode: 'kn-IN', flag: '🌿' },
   { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', speechCode: 'ml-IN', flag: '🌴' },
   { code: 'mr', name: 'Marathi', nativeName: 'मराठी', speechCode: 'mr-IN', flag: '🌾' },
@@ -31,20 +31,57 @@ export const VOICE_SUPPORTED_LANGUAGES = [
 ];
 
 /**
- * Automatically detect Indian regional language from text script
+ * Automatically detect Indian regional language from text script with dominant character frequency counting
  */
-export const detectLanguageFromText = (text) => {
-  if (!text || typeof text !== 'string') return 'en';
+export const detectLanguageFromText = (text, userSelectedLang = 'en') => {
+  if (!text || typeof text !== 'string') return userSelectedLang || 'en';
   
-  if (/[\u0B80-\u0BFF]/.test(text)) return 'ta'; // Tamil
-  if (/[\u0C00-\u0C7F]/.test(text)) return 'te'; // Telugu
-  if (/[\u0D00-\u0D7F]/.test(text)) return 'ml'; // Malayalam
-  if (/[\u0C80-\u0CFF]/.test(text)) return 'kn'; // Kannada
-  if (/[\u0A80-\u0AFF]/.test(text)) return 'gu'; // Gujarati
-  if (/[\u0A00-\u0A7F]/.test(text)) return 'pa'; // Punjabi
-  if (/[\u0B00-\u0B7F]/.test(text)) return 'or'; // Odia
-  if (/[\u0980-\u09FF]/.test(text)) return 'bn'; // Bengali
-  if (/[\u0900-\u097F]/.test(text)) return 'hi'; // Hindi / Marathi / Devanagari
+  let taCount = 0;
+  let teCount = 0;
+  let mlCount = 0;
+  let knCount = 0;
+  let hiCount = 0;
+  let guCount = 0;
+  let paCount = 0;
+  let bnCount = 0;
+  let latinCount = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code >= 0x0B80 && code <= 0x0BFF) taCount++;
+    else if (code >= 0x0C00 && code <= 0x0C7F) teCount++;
+    else if (code >= 0x0D00 && code <= 0x0D7F) mlCount++;
+    else if (code >= 0x0C80 && code <= 0x0CFF) knCount++;
+    else if (code >= 0x0900 && code <= 0x097F) hiCount++;
+    else if (code >= 0x0A80 && code <= 0x0AFF) guCount++;
+    else if (code >= 0x0A00 && code <= 0x0A7F) paCount++;
+    else if (code >= 0x0980 && code <= 0x09FF) bnCount++;
+    else if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) latinCount++;
+  }
+
+  const scriptCounts = [
+    { lang: 'ta', count: taCount },
+    { lang: 'te', count: teCount },
+    { lang: 'ml', count: mlCount },
+    { lang: 'kn', count: knCount },
+    { lang: 'hi', count: hiCount },
+    { lang: 'gu', count: guCount },
+    { lang: 'pa', count: paCount },
+    { lang: 'bn', count: bnCount }
+  ];
+
+  scriptCounts.sort((a, b) => b.count - a.count);
+
+  // If Indian script is present, return dominant script
+  if (scriptCounts[0].count > 0) {
+    return scriptCounts[0].lang;
+  }
+
+  // If text is purely ASCII / English characters:
+  // If user has explicitly selected a regional language from selector (e.g. Tamil or Telugu or Hindi) and types transliteration, prioritize selected
+  if (userSelectedLang && userSelectedLang !== 'en') {
+    return userSelectedLang;
+  }
 
   return 'en';
 };
@@ -158,7 +195,8 @@ export const createSpeechRecognizer = ({
   recognition.continuous = false;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
-  recognition.lang = LANG_SPEECH_CODES[language] || 'en-IN';
+  const langKey = (language || 'en').toLowerCase().slice(0, 2);
+  recognition.lang = LANG_SPEECH_CODES[langKey] || 'en-IN';
 
   recognition.onstart = () => {
     playChime(659.25, 'sine', 0.12);
@@ -178,14 +216,14 @@ export const createSpeechRecognizer = ({
     }
 
     const currentText = finalTranscript || interimTranscript;
-    const detectedLang = detectLanguageFromText(currentText);
+    const detectedLang = detectLanguageFromText(currentText, language);
 
     if (onResult) {
       onResult({
         final: finalTranscript,
         interim: interimTranscript,
         transcript: currentText,
-        detectedLang: detectedLang !== 'en' ? detectedLang : language,
+        detectedLang: detectedLang || language,
       });
     }
   };
@@ -227,8 +265,8 @@ export const speakText = (text, language = 'en', callbacks = {}) => {
   if (!cleanText) return;
 
   // Detect script from text so voice engine uses the true language of the text
-  const scriptLang = detectLanguageFromText(cleanText);
-  const langCode = (scriptLang !== 'en' ? scriptLang : language || 'en').toLowerCase().slice(0, 2);
+  const scriptLang = detectLanguageFromText(cleanText, language);
+  const langCode = (scriptLang || language || 'en').toLowerCase().slice(0, 2);
   const speechLang = LANG_SPEECH_CODES[langCode] || 'en-IN';
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -240,15 +278,32 @@ export const speakText = (text, language = 'en', callbacks = {}) => {
   const updateVoiceAndSpeak = () => {
     const voices = window.speechSynthesis.getVoices();
     if (voices.length > 0) {
-      const matchedVoice = voices.find(
+      // 1. Exact BCP-47 match (e.g. ta-IN, te-IN, hi-IN, ml-IN, kn-IN)
+      const exactMatch = voices.find(
         (v) => v.lang.toLowerCase().replace('_', '-') === speechLang.toLowerCase()
-      ) || voices.find(
+      );
+      // 2. Language prefix match (e.g. ta, te, hi, ml, kn)
+      const prefixMatch = voices.find(
         (v) => v.lang.toLowerCase().startsWith(langCode)
       );
+      // 3. Name match containing language name
+      const nameMatch = voices.find((v) =>
+        v.name.toLowerCase().includes(
+          langCode === 'ta' ? 'tamil' :
+          langCode === 'te' ? 'telugu' :
+          langCode === 'hi' ? 'hindi' :
+          langCode === 'kn' ? 'kannada' :
+          langCode === 'ml' ? 'malayalam' :
+          langCode === 'mr' ? 'marathi' :
+          langCode === 'bn' ? 'bengali' :
+          langCode === 'gu' ? 'gujarati' :
+          langCode === 'pa' ? 'punjabi' : 'india'
+        )
+      );
 
-      if (matchedVoice) {
-        utterance.voice = matchedVoice;
-      }
+      if (exactMatch) utterance.voice = exactMatch;
+      else if (prefixMatch) utterance.voice = prefixMatch;
+      else if (nameMatch) utterance.voice = nameMatch;
     }
 
     utterance.onstart = () => {
@@ -407,4 +462,3 @@ export const parseVoiceCommand = (text) => {
   // General Question
   return { type: 'query', text };
 };
-
