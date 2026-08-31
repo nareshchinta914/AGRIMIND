@@ -27,6 +27,7 @@ import SoilScannerModal from '../components/soil/SoilScannerModal';
 import { cropService } from '../services/cropService';
 import { farmReportService } from '../services/farmReportService';
 import { weatherService } from '../services/weatherService';
+import { waterAdvisoryService } from '../services/waterAdvisoryService';
 import { useLocation } from '../hooks/useLocation';
 import { useToast } from '../hooks/useToast';
 import { SOIL_TYPES, SEASONS, INDIAN_STATES } from '../utils/constants';
@@ -76,20 +77,39 @@ const FeaturesPage = () => {
   // --- WATER ADVICE STATE ---
   const [waterForm, setWaterForm] = useState({
     crop: 'Wheat',
+    growthStage: 'Tillering & Jointing',
     irrigationType: 'drip',
     landAcres: 5,
+    location: 'Thanjavur, Tamil Nadu',
+    soilMoisture: ''
   });
   const [waterAdvice, setWaterAdvice] = useState(null);
   const [waterLoading, setWaterLoading] = useState(false);
+  const [waterError, setWaterError] = useState(null);
 
   const handleWaterAdvisory = async (e) => {
     e?.preventDefault();
     setWaterLoading(true);
+    setWaterError(null);
     try {
-      const data = await weatherService.getWaterAdvisory(waterForm);
-      setWaterAdvice(data);
+      const data = await waterAdvisoryService.generateWaterAdvisory({
+        crop: waterForm.crop,
+        growthStage: waterForm.growthStage,
+        irrigationType: waterForm.irrigationType,
+        landAcres: Number(waterForm.landAcres) || 1,
+        location: waterForm.location || 'Thanjavur, Tamil Nadu',
+        soilMoistureInput: waterForm.soilMoisture ? Number(waterForm.soilMoisture) : null
+      });
+
+      if (!data.isValid) {
+        setWaterError(data.message);
+        setWaterAdvice(null);
+      } else {
+        setWaterAdvice(data);
+      }
     } catch (err) {
-      toast.error('Failed to load water advice');
+      setWaterError('Live weather information is currently unavailable. Please try again.');
+      setWaterAdvice(null);
     } finally {
       setWaterLoading(false);
     }
@@ -373,28 +393,42 @@ const FeaturesPage = () => {
             =================================================== */}
         {activeTab === 'water' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-md h-fit">
-              <h3 className="text-xl font-bold text-slate-900 font-display mb-1 flex items-center gap-2">
-                <Droplets className="w-5 h-5 text-skyAgri-600" />
-                Irrigation Calculator
-              </h3>
-              <p className="text-xs text-slate-500 mb-6">
-                Calculate smart water volume based on evapo-transpiration.
-              </p>
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-md h-fit space-y-4">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 font-display flex items-center gap-2">
+                  <Droplets className="w-5 h-5 text-skyAgri-600" />
+                  Irrigation Advisory Engine
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Live satellite agro-meteorological water advice.
+                </p>
+              </div>
 
-              <form onSubmit={handleWaterAdvisory} className="space-y-4">
+              <form onSubmit={handleWaterAdvisory} className="space-y-3.5">
                 <Input
                   label="Standing Crop"
                   value={waterForm.crop}
                   onChange={(e) => setWaterForm({ ...waterForm, crop: e.target.value })}
                 />
 
+                <Input
+                  label="Growth Stage"
+                  value={waterForm.growthStage}
+                  onChange={(e) => setWaterForm({ ...waterForm, growthStage: e.target.value })}
+                />
+
+                <Input
+                  label="Location (City / District)"
+                  value={waterForm.location}
+                  onChange={(e) => setWaterForm({ ...waterForm, location: e.target.value })}
+                />
+
                 <Select
                   label="Irrigation System"
                   options={[
-                    { value: 'drip', label: 'Drip Irrigation (टपक सिंचाई)' },
-                    { value: 'sprinkler', label: 'Sprinkler System (फव्वारा)' },
-                    { value: 'flood', label: 'Flood / Furrow (पारंपरिक बहाव)' }
+                    { value: 'drip', label: 'Drip Irrigation (90% Efficient)' },
+                    { value: 'sprinkler', label: 'Sprinkler System (75% Efficient)' },
+                    { value: 'flood', label: 'Flood / Furrow (55% Efficient)' }
                   ]}
                   value={waterForm.irrigationType}
                   onChange={(e) => setWaterForm({ ...waterForm, irrigationType: e.target.value })}
@@ -407,58 +441,98 @@ const FeaturesPage = () => {
                   onChange={(e) => setWaterForm({ ...waterForm, landAcres: e.target.value })}
                 />
 
+                <Input
+                  label="Soil Moisture Sensor (%) (Optional)"
+                  type="number"
+                  placeholder="e.g. 30 (optional)"
+                  value={waterForm.soilMoisture}
+                  onChange={(e) => setWaterForm({ ...waterForm, soilMoisture: e.target.value })}
+                />
+
                 <Button
                   type="submit"
                   variant="secondary"
                   size="lg"
                   isLoading={waterLoading}
-                  className="w-full mt-4"
+                  className="w-full mt-2"
                 >
-                  Generate Schedule
+                  Generate Water Advisory
                 </Button>
               </form>
             </div>
 
             <div className="lg:col-span-2 space-y-6">
+              {waterError && (
+                <div className="p-6 rounded-3xl bg-rose-50 border border-rose-200 text-rose-900 space-y-3">
+                  <div className="flex items-center gap-2 text-rose-700 font-bold">
+                    <AlertTriangle className="w-5 h-5" />
+                    <span>Live Advisory Unavailable</span>
+                  </div>
+                  <p className="text-xs font-semibold">{waterError}</p>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleWaterAdvisory}
+                    className="!bg-rose-600 text-white font-bold"
+                  >
+                    Retry Live Check
+                  </Button>
+                </div>
+              )}
+
               {waterAdvice && (
                 <div className="space-y-6">
-                  {/* Highlight Alert */}
-                  <div className="bg-gradient-to-r from-skyAgri-900 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Highlight Alert with 4 Distinct Decision states */}
+                  <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-sky-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl space-y-5">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
                       <div>
-                        <span className="text-xs font-black uppercase tracking-wider text-skyAgri-300">
-                          Next Irrigation Recommended
+                        <span className="text-xs font-black uppercase tracking-wider text-sky-400">
+                          Agro-Meteorological Advisory
                         </span>
-                        <h4 className="text-3xl font-black font-display text-white mt-1">
-                          In {waterAdvice.nextIrrigationDueInDays} Days (Optimal Window)
+                        <h4 className="text-2xl sm:text-3xl font-black font-display text-white mt-1">
+                          {waterAdvice.decision}
                         </h4>
-                        <p className="text-sm text-slate-300 mt-1">
-                          Water Volume Needed: ~{waterAdvice.suggestedAmountMm} mm depth
+                        <p className="text-xs text-slate-300 mt-1">
+                          {waterAdvice.cropName} • {waterAdvice.location}
                         </p>
                       </div>
 
-                      <div className="px-4 py-2.5 bg-emerald-500/20 border border-emerald-400/40 rounded-2xl text-emerald-300 text-center">
-                        <p className="text-2xl font-black">{waterAdvice.savingPercentageWithDrip}%</p>
-                        <p className="text-[10px] uppercase font-bold tracking-wider">Water Saved</p>
+                      <div className="px-4 py-2 bg-slate-800 rounded-2xl border border-slate-700 text-right">
+                        <p className="text-sm font-black text-sky-400">{waterAdvice.confidenceScore}%</p>
+                        <p className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Model Reliability</p>
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700 space-y-1">
+                        <span className="font-bold text-sky-300 uppercase text-[10px] block">Agronomic Rationale</span>
+                        <p className="text-slate-200">{waterAdvice.reason}</p>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700 space-y-1">
+                        <span className="font-bold text-emerald-300 uppercase text-[10px] block">Optimal Watering Timing</span>
+                        <p className="text-slate-200">{waterAdvice.suggestedTiming}</p>
+                      </div>
+                    </div>
+
+                    {/* Live Weather Parameters Bar */}
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400 border-t border-slate-800">
+                      <span>Temp: <strong className="text-white">{waterAdvice.currentWeather.temperature}</strong></span>
+                      <span>Humidity: <strong className="text-white">{waterAdvice.currentWeather.humidity}</strong></span>
+                      <span>Rain Prob: <strong className="text-white">{waterAdvice.currentWeather.rainProbability}</strong></span>
+                      <span>Updated: <strong className="text-white">{waterAdvice.updatedAt}</strong></span>
                     </div>
                   </div>
 
-                  {/* Hourly Schedule */}
-                  <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md">
-                    <h4 className="text-lg font-bold text-slate-900 font-display mb-4">
-                      Recommended Daily Watering Slots
+                  {/* Data Transparency Card */}
+                  <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-3">
+                    <h4 className="text-sm font-bold text-slate-900 font-display">
+                      Data Verification & Sensor Status
                     </h4>
-                    <div className="grid gap-3">
-                      {waterAdvice.schedule?.map((slot, i) => (
-                        <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-bold text-slate-800">{slot.time}</p>
-                            <p className="text-xs text-slate-500">{slot.reason}</p>
-                          </div>
-                          <span className="text-xs font-bold text-skyAgri-700 bg-skyAgri-50 px-3 py-1 rounded-lg border border-skyAgri-200">
-                            {slot.method}
-                          </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {waterAdvice.dataSources?.map((ds, i) => (
+                        <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">{ds.name}</span>
+                          <span className="text-xs font-bold text-slate-800">{ds.status}</span>
                         </div>
                       ))}
                     </div>
